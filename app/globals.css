@@ -176,4 +176,37 @@
   .brand-icon {
     @apply flex items-center justify-center w-16 h-16 rounded-full bg-muted hover:bg-primary/10 transition-colors cursor-pointer;
   }
+
+  /* ✅ FINAL: Stronger, more visible moving black/white gradient (with subtle mustard glow) */
+  @keyframes yoloGradient {
+    0% {
+      background-position: 0% 0%, 100% 20%, 0% 50%;
+    }
+    50% {
+      background-position: 70% 40%, 40% 60%, 100% 50%;
+    }
+    100% {
+      background-position: 20% 20%, 70% 30%, 0% 50%;
+    }
+  }
+
+  .yolo-animated-bg {
+    background:
+      /* bright white sweep */
+      radial-gradient(1200px 700px at 20% 30%, rgba(255, 255, 255, 0.18), transparent 60%),
+      radial-gradient(1000px 620px at 80% 35%, rgba(255, 255, 255, 0.12), transparent 62%),
+      /* subtle mustard glow */
+      radial-gradient(900px 520px at 55% 65%, rgba(234, 179, 8, 0.08), transparent 62%),
+      /* base */
+      linear-gradient(120deg, #000 0%, #0b0b0b 30%, #000 60%, #101010 100%);
+    background-size: 240% 240%, 240% 240%, 260% 260%, 220% 220%;
+    animation: yoloGradient 8s ease-in-out infinite;
+    will-change: background-position;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .yolo-animated-bg {
+      animation: none;
+    }
+  }
 }

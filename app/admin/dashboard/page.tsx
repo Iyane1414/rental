@@ -1,178 +1,306 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card } from "@/components/ui/card"
+import Image from "next/image"
+import { usePathname, useRouter } from "next/navigation"
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import DashboardLayout from "@/components/admin/dashboard-layout"
+import { Badge } from "@/components/ui/badge"
+import { Spinner } from "@/components/ui/spinner"
+
+import { LayoutDashboard, Car, CreditCard, Users, ClipboardList, LogOut, RefreshCw } from "lucide-react"
 
 interface DashboardStats {
-  activeRentals: number
-  availableVehicles: number
   pendingPayments: number
-  totalRevenue: number
-  completedToday: number
-  vehiclesInMaintenance: number
-  staffCount: number
-  pendingPaymentCount: number
+  ongoingRentals: number
+  availableVehicles: number
+  rentalsEndingToday: number
 }
 
-export default function AdminDashboard() {
+interface RecentRental {
+  Rental_ID: number
+  Customer_Name: string
+  Vehicle_Brand: string
+  Vehicle_Model: string
+  Status: string
+  StartDate: string
+  EndDate: string
+}
+
+function StaffSidebar() {
+  const pathname = usePathname()
   const router = useRouter()
-  const [stats, setStats] = useState<DashboardStats>({
-    activeRentals: 0,
-    availableVehicles: 0,
-    pendingPayments: 0,
-    totalRevenue: 0,
-    completedToday: 0,
-    vehiclesInMaintenance: 0,
-    staffCount: 0,
-    pendingPaymentCount: 0,
-  })
+
+  const nav = [
+    { label: "Dashboard", href: "/staff/dashboard", icon: LayoutDashboard },
+    { label: "Rentals", href: "/staff/rentals", icon: ClipboardList },
+    { label: "Payments", href: "/staff/payments", icon: CreditCard },
+    { label: "Vehicles", href: "/staff/vehicles", icon: Car },
+    { label: "Customers", href: "/staff/customers", icon: Users },
+  ]
+
+  const isActive = (href: string) => pathname?.startsWith(href)
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
+    } catch {}
+    router.push("/login")
+  }
+
+  return (
+    <aside className="w-[280px] shrink-0 border-r border-neutral-200 bg-white">
+      <div className="flex h-full flex-col p-6">
+        {/* Logo */}
+        <Link href="/staff/dashboard" className="flex items-center gap-3">
+          <Image src="/logo.png" alt="Logo" width={140} height={48} className="h-10 w-auto object-contain" />
+        </Link>
+
+        <div className="mt-6 text-xs font-semibold tracking-widest text-neutral-500">STAFF PORTAL</div>
+
+        {/* Nav */}
+        <nav className="mt-4 space-y-2">
+          {nav.map((item) => {
+            const Icon = item.icon
+            const active = isActive(item.href)
+            return (
+              <Link key={item.href} href={item.href}>
+                <div
+                  className={[
+                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    active
+                      ? "bg-black text-white"
+                      : "text-neutral-700 hover:bg-neutral-100 hover:text-black",
+                  ].join(" ")}
+                >
+                  <Icon className={active ? "h-4 w-4 text-yellow-400" : "h-4 w-4 text-neutral-500"} />
+                  {item.label}
+                </div>
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="mt-auto pt-6">
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="w-full justify-start rounded-xl border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+
+          <p className="mt-3 text-xs text-neutral-400">© {new Date().getFullYear()} YOLO Car Rental</p>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+export default function StaffDashboard() {
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [recentRentals, setRecentRentals] = useState<RecentRental[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    const user = localStorage.getItem("user")
-    if (!user) {
-      router.push("/login")
-      return
-    }
+    fetchDashboardData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    // Fetch dashboard stats
-    fetchStats()
-  }, [router])
-
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await fetch("/api/admin/stats")
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data)
-      }
-    } catch (error) {
-      console.error("Error fetching stats:", error)
+      setLoading(true)
+      setError("")
+
+      const statsRes = await fetch("/api/staff/dashboard/stats")
+      if (!statsRes.ok) throw new Error("Failed to fetch stats")
+      const statsData = await statsRes.json()
+      setStats(statsData)
+
+      const rentalsRes = await fetch("/api/staff/rentals?limit=5")
+      if (!rentalsRes.ok) throw new Error("Failed to fetch rentals")
+      const rentalsData = await rentalsRes.json()
+      setRecentRentals(rentalsData)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setLoading(false)
     }
   }
 
   if (loading) {
-    return <div className="p-8">Loading...</div>
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <Spinner />
+      </div>
+    )
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-bold text-foreground">Admin Dashboard</h1>
-          <Button onClick={fetchStats} variant="outline">Refresh Stats</Button>
-        </div>
+    <div className="min-h-screen bg-white">
+      <div className="flex min-h-screen">
+        <StaffSidebar />
 
-        {/* Primary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="p-6 bg-blue-50 border-blue-200 hover:shadow-lg transition">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Active Rentals</h3>
-            <p className="text-4xl font-bold text-blue-600">{stats.activeRentals}</p>
-            <p className="text-xs text-gray-500 mt-2">Currently ongoing</p>
-          </Card>
+        {/* Main */}
+        <main className="flex-1">
+          {/* Top bar */}
+          <div className="border-b border-neutral-200 bg-white">
+            <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-6">
+              <div>
+                <h1 className="text-2xl font-extrabold text-black">Staff Dashboard</h1>
+                <p className="mt-1 text-sm text-neutral-600">Manage rentals, payments, and vehicles</p>
+              </div>
 
-          <Card className="p-6 bg-green-50 border-green-200 hover:shadow-lg transition">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Available Vehicles</h3>
-            <p className="text-4xl font-bold text-green-600">{stats.availableVehicles}</p>
-            <p className="text-xs text-gray-500 mt-2">Ready to rent</p>
-          </Card>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={fetchDashboardData}
+                  variant="outline"
+                  className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </Button>
 
-          <Card className="p-6 bg-amber-50 border-amber-200 hover:shadow-lg transition">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Pending Payments</h3>
-            <p className="text-4xl font-bold text-amber-600">{stats.pendingPayments}</p>
-            <p className="text-xs text-gray-500 mt-2">Awaiting payment</p>
-          </Card>
-
-          <Card className="p-6 bg-purple-50 border-purple-200 hover:shadow-lg transition">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Total Revenue</h3>
-            <p className="text-3xl font-bold text-purple-600">PHP {(stats.totalRevenue || 0).toLocaleString('en-PH', {maximumFractionDigits: 0})}</p>
-            <p className="text-xs text-gray-500 mt-2">All payments</p>
-          </Card>
-        </div>
-
-        {/* Secondary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-6 bg-indigo-50 border-indigo-200">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Staff Members</h3>
-            <p className="text-3xl font-bold text-indigo-600">{stats.staffCount}</p>
-            <Link href="/admin/users">
-              <p className="text-xs text-indigo-600 hover:underline mt-2 cursor-pointer">Manage Staff →</p>
-            </Link>
-          </Card>
-
-          <Card className="p-6 bg-orange-50 border-orange-200">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">In Maintenance</h3>
-            <p className="text-3xl font-bold text-orange-600">{stats.vehiclesInMaintenance}</p>
-            <p className="text-xs text-gray-500 mt-2">Unavailable vehicles</p>
-          </Card>
-
-          <Card className="p-6 bg-teal-50 border-teal-200">
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Completed Today</h3>
-            <p className="text-3xl font-bold text-teal-600">{stats.completedToday}</p>
-            <p className="text-xs text-gray-500 mt-2">Returned rentals</p>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card className="p-6 bg-gray-50 border-gray-200">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link href="/admin/rentals">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                Create Rental
-              </Button>
-            </Link>
-            <Link href="/admin/rentals">
-              <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
-                View All Rentals
-              </Button>
-            </Link>
-            <Link href="/admin/vehicles">
-              <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-                Manage Fleet
-              </Button>
-            </Link>
-            <Link href="/admin/reports">
-              <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
-                View Reports
-              </Button>
-            </Link>
-          </div>
-        </Card>
-
-        {/* Staff Overview */}
-        <Card className="p-6 bg-white border-gray-200">
-          <h2 className="text-xl font-semibold text-foreground mb-4">System Status</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b">
-              <span className="text-gray-600">Staff Members Online</span>
-              <span className="font-semibold text-gray-800">{stats.staffCount} members</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b">
-              <span className="text-gray-600">Fleet Utilization</span>
-              <span className="font-semibold text-gray-800">
-                {stats.activeRentals + stats.availableVehicles + stats.vehiclesInMaintenance > 0
-                  ? Math.round((stats.activeRentals / (stats.activeRentals + stats.availableVehicles + stats.vehiclesInMaintenance)) * 100)
-                  : 0}%
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-gray-600">Payment Collection Rate</span>
-              <span className="font-semibold text-gray-800">
-                {stats.activeRentals + stats.pendingPayments > 0
-                  ? Math.round((stats.activeRentals / (stats.activeRentals + stats.pendingPayments)) * 100)
-                  : 0}%
-              </span>
+                <div className="h-10 w-px bg-neutral-200" />
+                <div className="text-sm font-semibold text-neutral-700">Staff</div>
+              </div>
             </div>
           </div>
-        </Card>
+
+          <div className="mx-auto max-w-7xl px-8 py-8">
+            {error && (
+              <Card className="mb-6 border-red-200 bg-red-50">
+                <CardContent className="pt-6 text-red-700">{error}</CardContent>
+              </Card>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              {[
+                { title: "Pending Payments", value: stats?.pendingPayments ?? 0, sub: "Require action" },
+                { title: "Ongoing Rentals", value: stats?.ongoingRentals ?? 0, sub: "In progress" },
+                { title: "Available Vehicles", value: stats?.availableVehicles ?? 0, sub: "Ready to rent" },
+                { title: "Ending Today", value: stats?.rentalsEndingToday ?? 0, sub: "Return expected" },
+              ].map((item) => (
+                <Card key={item.title} className="rounded-2xl border-neutral-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-neutral-700">{item.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-end justify-between">
+                      <div className="text-3xl font-extrabold text-black">{item.value}</div>
+                      <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                    </div>
+                    <p className="mt-2 text-xs text-neutral-500">{item.sub}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Recent Rentals */}
+            <Card className="mt-8 rounded-2xl border-neutral-200">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-extrabold text-black">Recent Rentals</CardTitle>
+                  <Link href="/staff/rentals">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
+                    >
+                      View All
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                {recentRentals.length === 0 ? (
+                  <p className="text-neutral-500">No rentals found</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-neutral-200">
+                          <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">
+                            CUSTOMER
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">
+                            VEHICLE
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">
+                            DATES
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">
+                            STATUS
+                          </th>
+                          <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">
+                            ACTION
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentRentals.map((rental) => (
+                          <tr key={rental.Rental_ID} className="border-b border-neutral-100 hover:bg-neutral-50">
+                            <td className="py-4 px-4 text-sm font-semibold text-black">{rental.Customer_Name}</td>
+                            <td className="py-4 px-4 text-sm text-neutral-800">
+                              {rental.Vehicle_Brand} {rental.Vehicle_Model}
+                            </td>
+                            <td className="py-4 px-4 text-sm text-neutral-600">
+                              {new Date(rental.StartDate).toLocaleDateString()} –{" "}
+                              {new Date(rental.EndDate).toLocaleDateString()}
+                            </td>
+                            <td className="py-4 px-4">
+                              <Badge
+                                className={
+                                  rental.Status === "Ongoing"
+                                    ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-100"
+                                }
+                              >
+                                {rental.Status}
+                              </Badge>
+                            </td>
+                            <td className="py-4 px-4">
+                              <Link href={`/staff/rentals/${rental.Rental_ID}`}>
+                                <Button variant="ghost" size="sm" className="rounded-xl">
+                                  View
+                                </Button>
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+              <Link href="/staff/rentals">
+                <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Manage Rentals</Button>
+              </Link>
+              <Link href="/staff/payments">
+                <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Process Payment</Button>
+              </Link>
+              <Link href="/staff/vehicles">
+                <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">View Vehicles</Button>
+              </Link>
+              <Link href="/staff/customers">
+                <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Customers</Button>
+              </Link>
+            </div>
+          </div>
+        </main>
       </div>
-    </DashboardLayout>
+    </div>
   )
 }

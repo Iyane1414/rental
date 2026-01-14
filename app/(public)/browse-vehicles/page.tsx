@@ -1,9 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ChevronDown } from "lucide-react"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { ChevronDown, Filter, MapPin, Calendar, Clock } from "lucide-react"
 
 interface Vehicle {
   Vehicle_ID: number
@@ -19,16 +22,27 @@ interface Vehicle {
   Location: string
 }
 
+function getBrandImage(brand: string) {
+  const b = (brand || "").toLowerCase()
+  if (b.includes("honda")) return "/honda.png"
+  if (b.includes("toyota")) return "/toyota.png"
+  if (b.includes("mitsubishi")) return "/mitsubishi.png"
+  if (b.includes("nissan")) return "/nissan.png"
+  if (b.includes("ford")) return "/ford.png"
+  return "/car-bg.png"
+}
+
 export default function BrowseVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
-  const [sortBy, setSortBy] = useState("popular")
+
+  const [sortBy, setSortBy] = useState<"popular" | "cheapest" | "best" | "newest">("popular")
   const [location, setLocation] = useState("Mumbai")
   const [destination, setDestination] = useState("Goa")
   const [date, setDate] = useState("2025-01-16")
   const [time, setTime] = useState("03:00 AM")
-  const [lookingFor, setLookingFor] = useState("4 seat")
+
   const [filters, setFilters] = useState({
     priceMin: 0,
     priceMax: 10000,
@@ -36,36 +50,27 @@ export default function BrowseVehiclesPage() {
     category: "all",
     hasAC: false,
   })
-  const [popularFilters, setPopularFilters] = useState({
-    ac: false,
-    newCar: false,
-    nonStop: false,
-  })
 
   useEffect(() => {
     fetchVehicles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, sortBy, date])
 
   const fetchVehicles = async () => {
     try {
       setLoading(true)
+
       const params = new URLSearchParams()
       params.append("priceMin", filters.priceMin.toString())
       params.append("priceMax", filters.priceMax.toString())
       params.append("sortBy", sortBy)
-      
-      if (filters.seats !== null) {
-        params.append("seats", filters.seats.toString())
-      }
-      if (filters.category !== "all") {
-        params.append("category", filters.category)
-      }
-      if (filters.hasAC) {
-        params.append("hasAC", "true")
-      }
+
+      if (filters.seats !== null) params.append("seats", filters.seats.toString())
+      if (filters.category !== "all") params.append("category", filters.category)
+      if (filters.hasAC) params.append("hasAC", "true")
+
       if (date) {
         params.append("startDate", date)
-        // Add default end date (7 days later)
         const endDate = new Date(date)
         endDate.setDate(endDate.getDate() + 7)
         params.append("endDate", endDate.toISOString().split("T")[0])
@@ -76,317 +81,402 @@ export default function BrowseVehiclesPage() {
         const data = await response.json()
         setVehicles(data)
         setFilteredVehicles(data)
+      } else {
+        setVehicles([])
+        setFilteredVehicles([])
       }
     } catch (error) {
       console.error("Error fetching vehicles:", error)
+      setVehicles([])
+      setFilteredVehicles([])
     } finally {
       setLoading(false)
     }
   }
 
+  // If your API returns no vehicles (ex: demo), show brand cards (Honda..Ford) as requested.
+  const fallbackBrandCards = useMemo(() => {
+    const brands = [
+      { Brand: "Honda", Model: "Featured", Category: "Sedan", DailyRate: 159, Seats: 5, HasAC: true, Year: 2024, Location: "City" },
+      { Brand: "Toyota", Model: "Featured", Category: "Sedan", DailyRate: 135, Seats: 5, HasAC: true, Year: 2024, Location: "City" },
+      { Brand: "Mitsubishi", Model: "Featured", Category: "SUV", DailyRate: 150, Seats: 7, HasAC: true, Year: 2024, Location: "City" },
+      { Brand: "Nissan", Model: "Featured", Category: "Sedan", DailyRate: 145, Seats: 5, HasAC: true, Year: 2024, Location: "City" },
+      { Brand: "Ford", Model: "Featured", Category: "SUV", DailyRate: 155, Seats: 7, HasAC: true, Year: 2024, Location: "City" },
+    ] as Array<Partial<Vehicle>>
+
+    return brands
+  }, [])
+
+  const results = filteredVehicles.length > 0 ? filteredVehicles : fallbackBrandCards
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-lg text-gray-600">Loading vehicles...</p>
-      </div>
+      <main className="relative min-h-screen overflow-hidden bg-black text-white">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-neutral-950 to-black" />
+          <div className="absolute inset-0 yolo-animated-bg opacity-100" />
+          <div className="absolute inset-0 opacity-[0.10]">
+            <Image src="/cars.png" alt="" fill priority className="object-cover grayscale contrast-125 blur-[1px]" />
+          </div>
+          <div className="absolute left-1/2 top-[-240px] h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute right-[-180px] top-[-160px] h-[480px] w-[480px] rounded-full bg-yellow-500/10 blur-3xl" />
+          <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black to-transparent" />
+        </div>
+
+        <div className="relative mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 backdrop-blur">
+            <p className="text-sm text-white/80">Loading vehicles...</p>
+          </div>
+        </div>
+      </main>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Blue Sidebar */}
-      <aside className="fixed left-0 top-0 w-16 h-screen bg-blue-600 flex flex-col items-center py-4 gap-6 z-40">
-        <button className="text-white hover:bg-blue-700 p-3 rounded transition-colors">
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-          </svg>
-        </button>
-        <button className="text-white hover:bg-blue-700 p-3 rounded transition-colors">
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zm4.4 0h8.2v1.9H8.3z" />
-          </svg>
-        </button>
-        <button className="text-white hover:bg-blue-700 p-3 rounded transition-colors">
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
-        </button>
-        <button className="text-white hover:bg-blue-700 p-3 rounded transition-colors">
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm11 0c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
-          </svg>
-        </button>
-        <div className="mt-auto flex flex-col gap-3">
-          <button className="bg-red-600 text-white rounded-full p-3 hover:bg-red-700 transition-colors">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-            </svg>
-          </button>
+    <main className="relative min-h-screen overflow-hidden bg-black text-white">
+      {/* Background (same vibe as login page) */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-neutral-950 to-black" />
+        <div className="absolute inset-0 yolo-animated-bg opacity-100" />
+
+        {/* Use cars.png as requested */}
+        <div className="absolute inset-0 opacity-[0.12]">
+          <Image src="/cars.png" alt="" fill priority className="object-cover grayscale contrast-125 blur-[1px]" />
         </div>
-      </aside>
 
-      {/* Main Content */}
-      <main className="ml-16">
-        {/* Top Header with Search */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="px-6 py-3 flex justify-between items-center">
-            <div className="flex gap-4">
-              <button className="text-gray-600 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
+        <div className="absolute left-1/2 top-[-240px] h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute right-[-180px] top-[-160px] h-[480px] w-[480px] rounded-full bg-yellow-500/10 blur-3xl" />
+        <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black to-transparent" />
+      </div>
+
+      {/* Top header (matches Home/Login theme) */}
+      <header className="relative z-20 border-b border-white/10 bg-white/5 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo.png" alt="Logo" width={140} height={48} className="h-10 w-auto object-contain" priority />
+          </Link>
+
+          <nav className="hidden items-center gap-8 text-sm text-white/80 md:flex">
+            <Link className="hover:text-white transition" href="/">
+              Home
+            </Link>
+            <Link className="hover:text-white transition" href="/browse-vehicles">
+              Cars
+            </Link>
+            <Link className="hover:text-white transition" href="/browse-vehicles">
+              Services
+            </Link>
+            <Link className="hover:text-white transition" href="/browse-vehicles">
+              Contact
+            </Link>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Link href="/login">
+              <Button className="bg-white text-black hover:bg-white/90">Login</Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Search bar row (clean + glass) */}
+        <div className="mx-auto max-w-7xl px-4 pb-5 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-3 rounded-3xl border border-white/10 bg-black/40 p-4 backdrop-blur md:grid-cols-12 md:items-end">
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-[11px] font-semibold text-white/70">
+                <span className="inline-flex items-center gap-2">
+                  <MapPin className="h-4 w-4" /> From
+                </span>
+              </label>
+              <Input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="h-11 rounded-2xl border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-yellow-500/60"
+              />
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <button className="text-gray-700 hover:text-gray-900">Become a Partner</button>
-              <span className="text-gray-400">|</span>
-              <button className="text-gray-700 hover:text-gray-900">Mansourul Haque</button>
+
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-[11px] font-semibold text-white/70">To</label>
+              <Input
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                className="h-11 rounded-2xl border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-yellow-500/60"
+              />
+            </div>
+
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-[11px] font-semibold text-white/70">
+                <span className="inline-flex items-center gap-2">
+                  <Calendar className="h-4 w-4" /> Date
+                </span>
+              </label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="h-11 rounded-2xl border-white/15 bg-white/10 text-white focus-visible:ring-yellow-500/60"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-[11px] font-semibold text-white/70">
+                <span className="inline-flex items-center gap-2">
+                  <Clock className="h-4 w-4" /> Time
+                </span>
+              </label>
+              <Input
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="h-11 rounded-2xl border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-yellow-500/60"
+              />
+            </div>
+
+            <div className="md:col-span-1">
+              <Button className="h-11 w-full rounded-2xl bg-yellow-500 text-black hover:bg-yellow-500/90">
+                Search
+              </Button>
             </div>
           </div>
+        </div>
+      </header>
 
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="flex gap-4 items-end">
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-gray-700 block mb-1">From</label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-gray-700 block mb-1">To</label>
-                <input
-                  type="text"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-gray-700 block mb-1">Date</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-gray-700 block mb-1">Time</label>
-                <input
-                  type="text"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <button className="bg-red-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-red-700 transition-colors">
-                Search Cars
-              </button>
-            </div>
-          </div>
-        </header>
+      {/* Page body */}
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Filters (left) */}
+          <aside className="lg:col-span-3">
+            <Card className="sticky top-6 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-2xl backdrop-blur-xl">
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-yellow-300" />
+                  <h3 className="text-base font-extrabold">Filters</h3>
+                </div>
 
-        {/* Content Area */}
-        <div className="flex gap-6 p-6">
-          {/* Right Sidebar Filters */}
-          <div className="w-64 flex-shrink-0">
-            <div className="bg-white rounded-lg border border-gray-200 p-6 sticky top-24">
-              <h3 className="text-lg font-bold mb-6 text-gray-900">Filters</h3>
+                <button
+                  onClick={() =>
+                    setFilters({
+                      priceMin: 0,
+                      priceMax: 10000,
+                      seats: null,
+                      category: "all",
+                      hasAC: false,
+                    })
+                  }
+                  className="text-xs font-semibold text-white/70 hover:text-white"
+                >
+                  Reset
+                </button>
+              </div>
 
-              {/* Price Range */}
-              <div className="mb-6 pb-6 border-b border-gray-200">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Price</h4>
+              {/* Price */}
+              <div className="mb-6 border-b border-white/10 pb-6">
+                <p className="mb-3 text-sm font-semibold text-white/85">Price range</p>
                 <input
                   type="range"
-                  min="0"
-                  max="5000"
+                  min={0}
+                  max={10000}
                   value={filters.priceMax}
                   onChange={(e) => setFilters({ ...filters, priceMax: Number(e.target.value) })}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  className="w-full accent-yellow-500"
                 />
-                <div className="flex justify-between text-xs text-gray-600 mt-2">
-                  <span>${filters.priceMin}</span>
-                  <span>${filters.priceMax}</span>
+                <div className="mt-2 flex justify-between text-xs text-white/70">
+                  <span>₱ {filters.priceMin}</span>
+                  <span>₱ {filters.priceMax}</span>
                 </div>
-                <div className="w-full h-12 bg-gray-100 rounded mt-2"></div>
               </div>
 
               {/* Seats */}
-              <div className="mb-6 pb-6 border-b border-gray-200">
-                <label className="text-sm font-semibold text-gray-900 block mb-3">Seats</label>
+              <div className="mb-6 border-b border-white/10 pb-6">
+                <label className="mb-3 block text-sm font-semibold text-white/85">Seats</label>
                 <div className="relative">
                   <select
-                    value={filters.seats || ""}
-                    onChange={(e) => setFilters({ ...filters, seats: e.target.value ? parseInt(e.target.value) : null })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                    value={filters.seats ?? ""}
+                    onChange={(e) =>
+                      setFilters({
+                        ...filters,
+                        seats: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                    className="h-11 w-full appearance-none rounded-2xl border border-white/15 bg-white/10 px-3 pr-10 text-sm text-white outline-none focus:border-yellow-500/50"
                   >
                     <option value="">Any</option>
                     <option value="4">4 Seat</option>
                     <option value="5">5 Seat</option>
                     <option value="7">7 Seat</option>
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none" />
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                 </div>
               </div>
 
               {/* Category */}
-              <div className="mb-6 pb-6 border-b border-gray-200">
-                <label className="text-sm font-semibold text-gray-900 block mb-3">Category</label>
+              <div className="mb-6 border-b border-white/10 pb-6">
+                <label className="mb-3 block text-sm font-semibold text-white/85">Category</label>
                 <div className="relative">
                   <select
                     value={filters.category}
                     onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
+                    className="h-11 w-full appearance-none rounded-2xl border border-white/15 bg-white/10 px-3 pr-10 text-sm text-white outline-none focus:border-yellow-500/50"
                   >
                     <option value="all">All</option>
                     <option value="Sedan">Sedan</option>
                     <option value="SUV">SUV</option>
                     <option value="Van">Van</option>
                   </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none" />
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                 </div>
               </div>
 
-              {/* Popular Filters */}
-              <div className="mb-6">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Popular Filters</h4>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.hasAC}
-                      onChange={(e) => setFilters({ ...filters, hasAC: e.target.checked })}
-                      className="w-4 h-4 accent-blue-600 rounded"
-                    />
-                    <span className="text-sm text-gray-700">AC</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={popularFilters.newCar}
-                      onChange={(e) => setPopularFilters({ ...popularFilters, newCar: e.target.checked })}
-                      className="w-4 h-4 accent-blue-600 rounded"
-                    />
-                    <span className="text-sm text-gray-700">Newer Cars (2022+)</span>
-                  </label>
-                </div>
+              {/* Popular */}
+              <div className="mb-2">
+                <p className="mb-3 text-sm font-semibold text-white/85">Popular</p>
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-white/75">
+                  <input
+                    type="checkbox"
+                    checked={filters.hasAC}
+                    onChange={(e) => setFilters({ ...filters, hasAC: e.target.checked })}
+                    className="h-4 w-4 accent-yellow-500"
+                  />
+                  Air conditioning (AC)
+                </label>
               </div>
+            </Card>
+          </aside>
 
-              <button className="w-full text-blue-600 text-sm font-semibold hover:text-blue-700 transition-colors">
-                More
-              </button>
-            </div>
-          </div>
-
-          {/* Vehicle List */}
-          <div className="flex-1">
-            {/* Header with Sort */}
-            <div className="flex justify-between items-center mb-6">
+          {/* Results (right) */}
+          <section className="lg:col-span-9">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Available Vehicles</h2>
-                <p className="text-sm text-gray-600">Total {filteredVehicles.length} result</p>
+                <p className="text-xs font-semibold tracking-widest text-white/60">AVAILABLE VEHICLES</p>
+                <h2 className="mt-1 text-2xl font-extrabold">Choose your ride</h2>
+                <p className="mt-1 text-sm text-white/70">
+                  Total <span className="font-semibold text-white">{filteredVehicles.length || 5}</span>{" "}
+                  {filteredVehicles.length === 1 ? "result" : "results"}
+                </p>
               </div>
+
               <div className="flex gap-2">
-                <button
-                  onClick={() => setSortBy("cheapest")}
-                  className={`px-4 py-2 rounded text-sm font-semibold transition-colors ${
-                    sortBy === "cheapest"
-                      ? "bg-blue-600 text-white"
-                      : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  Cheapest
-                </button>
-                <button
-                  onClick={() => setSortBy("best")}
-                  className={`px-4 py-2 rounded text-sm font-semibold transition-colors ${
-                    sortBy === "best"
-                      ? "bg-blue-600 text-white"
-                      : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  Best
-                </button>
-                <button
-                  onClick={() => setSortBy("newest")}
-                  className={`px-4 py-2 rounded text-sm font-semibold transition-colors ${
-                    sortBy === "newest"
-                      ? "bg-blue-600 text-white"
-                      : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  Newest
-                </button>
+                {[
+                  { key: "cheapest", label: "Cheapest" },
+                  { key: "best", label: "Best" },
+                  { key: "newest", label: "Newest" },
+                ].map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={() => setSortBy(s.key as any)}
+                    className={[
+                      "rounded-2xl px-4 py-2 text-sm font-semibold transition",
+                      sortBy === s.key
+                        ? "bg-yellow-500 text-black"
+                        : "border border-white/15 bg-white/5 text-white/80 hover:bg-white/10",
+                    ].join(" ")}
+                  >
+                    {s.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="space-y-4">
-              {filteredVehicles.length > 0 ? (
-                filteredVehicles.map((vehicle) => (
-                  <div key={vehicle.Vehicle_ID} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer flex gap-4">
-                    {/* Vehicle Image */}
-                    <Link href={`/book-vehicle/${vehicle.Vehicle_ID}`} className="w-40 h-32 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
-                      <img
-                        src={`/.jpg?height=128&width=160&query=${vehicle.Brand} ${vehicle.Model} ${vehicle.Year}`}
-                        alt={`${vehicle.Brand} ${vehicle.Model}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </Link>
+            {/* Grid of vehicle cards (theme-matched) */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {results.map((v: any, idx: number) => {
+                const id = v.Vehicle_ID ?? idx + 1
+                const brand = v.Brand ?? "Honda"
+                const model = v.Model ?? "Featured"
+                const category = v.Category ?? "Sedan"
+                const year = v.Year ?? 2024
+                const seats = v.Seats ?? 5
+                const hasAC = Boolean(v.HasAC ?? true)
+                const dailyRate = v.DailyRate ?? 149
+                const loc = v.Location ?? "City"
+                const img = getBrandImage(brand)
 
-                    {/* Vehicle Details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start gap-2 mb-2">
-                        <h3 className="text-base font-bold text-gray-900">
-                          {vehicle.Brand} {vehicle.Model}
-                        </h3>
-                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-semibold flex-shrink-0">
-                          {vehicle.Category}
-                        </span>
+                return (
+                  <Card
+                    key={id}
+                    className="group overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 text-white shadow-2xl backdrop-blur-xl"
+                  >
+                    <div className="relative overflow-hidden rounded-2xl bg-white/5">
+                      <div className="absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-yellow-500/10 via-transparent to-white/10" />
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">{vehicle.Year} • {vehicle.Location}</p>
 
-                      {/* Features Icons */}
-                      <div className="flex gap-4 text-xs text-gray-600">
-                        {vehicle.HasAC && <span className="flex items-center gap-1">❄️ AC</span>}
-                        <span className="flex items-center gap-1">👥 {vehicle.Seats} Seat</span>
+                      <div className="relative aspect-[4/3] w-full">
+                        <Image src={img} alt={`${brand} ${model}`} fill className="object-contain p-4" />
+                      </div>
+
+                      <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/40 px-3 py-1 text-xs font-semibold text-white/85">
+                        {category}
                       </div>
                     </div>
 
-                    {/* Price and Buttons */}
-                    <div className="flex-shrink-0 text-right flex flex-col items-end justify-between">
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">${vehicle.DailyRate}</p>
-                        <p className="text-xs text-gray-600">/day</p>
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-base font-extrabold">
+                            {brand} <span className="text-white/80">{model}</span>
+                          </h3>
+                          <p className="mt-1 text-xs text-white/65">
+                            {year} • {loc} • {seats} seats {hasAC ? "• AC" : ""}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-xl font-extrabold text-white">₱{dailyRate}</p>
+                          <p className="text-xs text-white/60">/day</p>
+                        </div>
                       </div>
-                      <div className="flex gap-2 mt-2">
-                        <Link href={`/book-vehicle/${vehicle.Vehicle_ID}`}>
-                          <Button className="bg-white border border-gray-300 text-gray-900 hover:bg-gray-50 text-xs px-3 py-1">
+
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <Link href={`/book-vehicle/${id}`} className="w-full">
+                          <Button
+                            variant="outline"
+                            className="h-11 w-full rounded-2xl border-white/20 bg-transparent text-white hover:bg-white/10"
+                          >
                             View Details
                           </Button>
                         </Link>
-                        <Link href={`/book-vehicle/${vehicle.Vehicle_ID}`}>
-                          <Button
-                            className="bg-blue-600 text-white hover:bg-blue-700 text-xs px-3 py-1"
-                          >
-                            BOOK NOW
+
+                        <Link href={`/book-vehicle/${id}`} className="w-full">
+                          <Button className="h-11 w-full rounded-2xl bg-yellow-500 text-black hover:bg-yellow-500/90">
+                            Book Now
                           </Button>
                         </Link>
                       </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-600">No vehicles match your filters</p>
-                </div>
-              )}
+                  </Card>
+                )
+              })}
             </div>
+
+            {filteredVehicles.length === 0 && (
+              <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6 text-center text-white/70 backdrop-blur-xl">
+                No vehicles match your filters right now. Showing featured brands instead.
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+
+      {/* Footer (simple, theme matched) */}
+      <footer className="relative z-10 border-t border-white/10 bg-white/5 py-10 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <Image src="/logo.png" alt="Logo" width={110} height={36} className="h-8 w-auto object-contain" />
+            <p className="text-xs text-white/60">© {new Date().getFullYear()} YOLO Car Rental. All rights reserved.</p>
+          </div>
+
+          <div className="flex items-center gap-4 text-sm text-white/70">
+            <Link href="/" className="hover:text-white">
+              Home
+            </Link>
+            <Link href="/browse-vehicles" className="hover:text-white">
+              Browse
+            </Link>
+            <Link href="/login" className="hover:text-white">
+              Login
+            </Link>
           </div>
         </div>
-      </main>
-    </div>
+      </footer>
+    </main>
   )
 }
