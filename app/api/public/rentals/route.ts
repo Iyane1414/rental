@@ -1,7 +1,75 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
-export async function POST(request: Request) {
+// GET - List rentals with optional filters
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const vehicleId = searchParams.get("vehicleId")
+    const customerId = searchParams.get("customerId")
+    const status = searchParams.get("status")
+
+    const where: any = {}
+
+    if (vehicleId) {
+      where.Vehicle_ID = parseInt(vehicleId)
+    }
+
+    if (customerId) {
+      where.Customer_ID = parseInt(customerId)
+    }
+
+    if (status) {
+      where.Status = status
+    }
+
+    const rentals = await prisma.rentalInfo.findMany({
+      where,
+      include: {
+        Customer: true,
+        Vehicle: true,
+        PaymentInfo: true,
+      },
+      orderBy: {
+        CreatedAt: "desc",
+      },
+    })
+
+    // Helper to safely convert Decimal to number
+    const toNumber = (value: any): number => {
+      if (typeof value === "number") return value
+      if (value && typeof value.toNumber === "function") return value.toNumber()
+      return Number(value) || 0
+    }
+
+    return NextResponse.json(
+      rentals.map((rental) => ({
+        Rental_ID: rental.Rental_ID,
+        Customer_ID: rental.Customer_ID,
+        Customer_Name: rental.Customer.Customer_Name,
+        Customer_Email: rental.Customer.Email,
+        Customer_Phone: rental.Customer.ContactNo,
+        Vehicle_ID: rental.Vehicle_ID,
+        Vehicle_Brand: rental.Vehicle.Brand,
+        Vehicle_Model: rental.Vehicle.Model,
+        PlateNo: rental.Vehicle.PlateNo,
+        VehicleStatus: rental.Vehicle.Status,
+        StartDate: rental.StartDate,
+        EndDate: rental.EndDate,
+        TotalAmount: toNumber(rental.TotalAmount),
+        Status: rental.Status,
+        Payment_ID: rental.PaymentInfo?.Payment_ID,
+        Payment_Status: rental.PaymentInfo?.Status,
+      }))
+    )
+  } catch (error) {
+    console.error("Error fetching rentals:", error)
+    return NextResponse.json({ message: "Failed to fetch rentals" }, { status: 500 })
+  }
+}
+
+// POST - Create a new rental (called after booking)
+export async function POST(request: NextRequest) {
   try {
     const { customerName, email, phone, licenseNo, vehicleId, startDate, endDate, totalAmount } = await request.json()
 
@@ -88,7 +156,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ rentalId: rental.Rental_ID, success: true })
   } catch (error) {
-    console.error("Booking error:", error)
-    return NextResponse.json({ message: "Failed to create booking" }, { status: 500 })
+    console.error("Rental creation error:", error)
+    return NextResponse.json({ message: "Failed to create rental" }, { status: 500 })
   }
 }

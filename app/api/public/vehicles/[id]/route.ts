@@ -19,13 +19,14 @@ function serializeVehicle(vehicle: any) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const vehicleId = Number(params.id)
+    const { id } = await context.params
+    const vehicleId = Number(id)
 
     if (!Number.isInteger(vehicleId) || vehicleId <= 0) {
-      return NextResponse.json({ error: "Invalid vehicle ID" }, { status: 400 })
+      return NextResponse.json({ message: "Invalid vehicle ID" }, { status: 400 })
     }
 
     const vehicle = await prisma.vehicleInfo.findUnique({
@@ -33,12 +34,12 @@ export async function GET(
     })
 
     if (!vehicle) {
-      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 })
+      return NextResponse.json({ message: "Vehicle not found" }, { status: 404 })
     }
 
     return NextResponse.json(serializeVehicle(vehicle))
   } catch (error) {
     console.error("Error fetching vehicle:", error)
-    return NextResponse.json({ error: "Failed to fetch vehicle" }, { status: 500 })
+    return NextResponse.json({ message: "Failed to fetch vehicle" }, { status: 500 })
   }
 }

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const rentalId = parseInt(params.id)
+    const { id } = await context.params
+    const rentalId = parseInt(id)
 
     const rental = await prisma.rentalInfo.findUnique({
       where: { Rental_ID: rentalId },
@@ -42,9 +43,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const rentalId = parseInt(params.id)
+    const { id } = await context.params
+    const rentalId = parseInt(id)
     const { status } = await request.json()
 
     if (!status) {

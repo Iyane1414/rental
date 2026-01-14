@@ -34,7 +34,7 @@ export default function PaymentPage() {
 
   const fetchRental = async () => {
     try {
-      const response = await fetch(`/api/rental/${rentalId}`)
+      const response = await fetch(`/api/public/rentals/${rentalId}`)
       if (response.ok) {
         const data = await response.json()
         setRental(data)
