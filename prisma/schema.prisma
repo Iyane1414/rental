@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("MYSQL_URL")
+}
+
+model CustomerInfo {
+  Customer_ID Int      @id @default(autoincrement())
+  Customer_Name String  @db.VarChar(60)
+  ContactNo   String   @db.VarChar(20)
+  LicenseNo   String   @db.VarChar(50) @unique
+  Email       String   @db.VarChar(50)
+  Address     String   @db.VarChar(50)
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+  
+  RentalInfo  RentalInfo[]
+  
+  @@map("customer_info")
+}
+
+model VehicleInfo {
+  Vehicle_ID  Int     @id @default(autoincrement())
+  Brand       String  @db.VarChar(50)
+  Model       String  @db.VarChar(50)
+  PlateNo     String  @db.VarChar(20) @unique
+  Status      String  @db.VarChar(20) @default("Available")
+  DailyRate   Decimal @db.Decimal(10, 2)
+  Year        Int
+  Seats       Int     @default(4)
+  Category    String  @db.VarChar(30) @default("Sedan")
+  HasAC       Boolean @default(true)
+  Location    String  @db.VarChar(50) @default("Mumbai")
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+  
+  RentalInfo  RentalInfo[]
+  
+  @@map("vehicle_info")
+}
+
+model UserInfo {
+  User_ID   Int     @id @default(autoincrement())
+  Username  String  @db.VarChar(50) @unique
+  Password  String  @db.VarChar(255)
+  Role      String  @db.VarChar(20)
+  Email     String  @db.VarChar(50)
+  CreatedAt DateTime @default(now())
+  UpdatedAt DateTime @updatedAt
+  
+  RentalInfo RentalInfo[]
+  RentalAudit RentalAudit[]
+  
+  @@map("user_info")
+}
+
+model RentalInfo {
+  Rental_ID   Int     @id @default(autoincrement())
+  Customer_ID Int
+  Vehicle_ID  Int
+  User_ID     Int
+  StartDate   DateTime @db.Date
+  EndDate     DateTime @db.Date
+  TotalAmount Decimal @db.Decimal(10, 2)
+  Status      String  @db.VarChar(20) @default("Pending Payment")
+  CreatedAt   DateTime @default(now())
+  UpdatedAt   DateTime @updatedAt
+  
+  Customer    CustomerInfo @relation(fields: [Customer_ID], references: [Customer_ID])
+  Vehicle     VehicleInfo @relation(fields: [Vehicle_ID], references: [Vehicle_ID])
+  User        UserInfo @relation(fields: [User_ID], references: [User_ID])
+  PaymentInfo PaymentInfo?
+  RentalAudit RentalAudit[]
+  
+  @@index([Customer_ID])
+  @@index([Vehicle_ID])
+  @@index([User_ID])
+  @@map("rental_info")
+}
+
+model PaymentInfo {
+  Payment_ID    Int     @id @default(autoincrement())
+  Rental_ID     Int     @unique
+  Amount        Decimal @db.Decimal(10, 2)
+  PaymentDate   DateTime @db.Date
+  PaymentMethod String  @db.VarChar(30)
+  Status        String  @db.VarChar(20) @default("Pending")
+  CreatedAt     DateTime @default(now())
+  UpdatedAt     DateTime @updatedAt
+  
+  RentalInfo    RentalInfo @relation(fields: [Rental_ID], references: [Rental_ID])
+  
+  @@map("payment_info")
+}
+
+model RentalAudit {
+  Audit_ID    Int     @id @default(autoincrement())
+  Rental_ID   Int
+  OldStatus   String? @db.VarChar(20)
+  NewStatus   String? @db.VarChar(20)
+  ChangedBy   Int?
+  ChangedAt   DateTime @default(now())
+  
+  RentalInfo  RentalInfo @relation(fields: [Rental_ID], references: [Rental_ID])
+  User        UserInfo? @relation(fields: [ChangedBy], references: [User_ID])
+  
+  @@map("rental_audit")
+}
