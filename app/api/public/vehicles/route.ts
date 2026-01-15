@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category") || null
     const hasAC = searchParams.get("hasAC") ? searchParams.get("hasAC") === "true" : null
     const sortBy = searchParams.get("sortBy") || "popular"
+    const query = searchParams.get("query")
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
 
@@ -51,6 +52,13 @@ export async function GET(request: NextRequest) {
 
     if (hasAC !== null) {
       where.HasAC = hasAC
+    }
+
+    if (query) {
+      where.OR = [
+        { Brand: { contains: query, mode: "insensitive" } },
+        { Model: { contains: query, mode: "insensitive" } },
+      ]
     }
 
     // Fetch all available vehicles

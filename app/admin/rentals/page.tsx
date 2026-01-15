@@ -209,6 +209,25 @@ export default function RentalsPage() {
               </Card>
             )}
 
+            {/* Summary Stats (now matches dashboard style: neutral cards) */}
+            <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+              {[
+                { title: "Total Rentals", value: stats.total },
+                { title: "Pending Payment", value: stats.pending },
+                { title: "Ongoing", value: stats.ongoing },
+                { title: "Completed", value: stats.completed },
+              ].map((s) => (
+                <Card key={s.title} className="rounded-2xl border-neutral-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-neutral-700">{s.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-extrabold text-black">{s.value}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
             {/* Filters (match the dashboard-ish pill buttons) */}
             <div className="mb-6 flex flex-wrap gap-2">
               {(["All", "Pending Payment", "Ongoing", "Completed"] as const).map((t) => (
@@ -315,24 +334,6 @@ export default function RentalsPage() {
               </CardContent>
             </Card>
 
-            {/* Summary Stats (now matches dashboard style: neutral cards) */}
-            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-4">
-              {[
-                { title: "Total Rentals", value: stats.total },
-                { title: "Pending Payment", value: stats.pending },
-                { title: "Ongoing", value: stats.ongoing },
-                { title: "Completed", value: stats.completed },
-              ].map((s) => (
-                <Card key={s.title} className="rounded-2xl border-neutral-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-neutral-700">{s.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-extrabold text-black">{s.value}</div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
           </div>
         </main>
       </div>

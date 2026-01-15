@@ -70,13 +70,6 @@ export default function HomePage() {
               />
             </Link>
 
-            <nav className="hidden items-center gap-8 text-sm text-white/80 md:flex">
-              <Link className="hover:text-white transition" href="/">Home</Link>
-              <Link className="hover:text-white transition" href="/browse-vehicles">Cars</Link>
-              <Link className="hover:text-white transition" href="/browse-vehicles">Services</Link>
-              <Link className="hover:text-white transition" href="/browse-vehicles">Contact</Link>
-            </nav>
-
             <div className="flex items-center gap-3">
               <Link href="/browse-vehicles">
                 <Button variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10">

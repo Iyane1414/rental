@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { LayoutDashboard, Car, CreditCard, Users, ClipboardList, LogOut, RefreshCw } from "lucide-react"
@@ -119,6 +120,10 @@ export default function CustomersPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState("")
   const [updatingRentalId, setUpdatingRentalId] = useState<number | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const totalPaid = selectedCustomer
+    ? selectedCustomer.Rentals.reduce((sum, rental) => sum + (rental.Payment?.Amount ?? 0), 0)
+    : 0
 
   useEffect(() => {
     fetchCustomers()
@@ -242,10 +247,14 @@ export default function CustomersPage() {
                         {customers.map((customer) => (
                           <tr
                             key={customer.Customer_ID}
-                            onClick={() => fetchCustomerDetail(customer.Customer_ID)}
+                            onClick={() => {
+                              fetchCustomerDetail(customer.Customer_ID)
+                              setDetailsOpen(true)
+                            }}
                             className={[
-                              "border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer",
-                              selectedCustomer?.Customer_ID === customer.Customer_ID ? "bg-neutral-50" : "",
+                              "border-b border-neutral-100 cursor-pointer transition-colors",
+                              "hover:bg-neutral-100",
+                              selectedCustomer?.Customer_ID === customer.Customer_ID ? "bg-neutral-100" : "",
                             ].join(" ")}
                           >
                             <td className="py-4 px-4 text-sm font-semibold text-black">{customer.Customer_Name}</td>
@@ -262,113 +271,132 @@ export default function CustomersPage() {
               </CardContent>
             </Card>
 
-            {detailLoading && (
-              <Card className="mt-6 border-neutral-200">
-                <CardContent className="pt-6 text-neutral-600">Loading customer details...</CardContent>
-              </Card>
-            )}
+            <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+              <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto rounded-3xl border-neutral-200 bg-white shadow-xl">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-extrabold text-black">Customer Details</DialogTitle>
+                </DialogHeader>
 
-            {detailError && (
-              <Card className="mt-6 border-red-200 bg-red-50">
-                <CardContent className="pt-6 text-red-700">{detailError}</CardContent>
-              </Card>
-            )}
+                {detailLoading && <p className="text-neutral-600">Loading customer details...</p>}
 
-            {selectedCustomer && !detailLoading && (
-              <Card className="mt-6 border-neutral-200">
-                <CardHeader>
-                  <CardTitle className="text-lg font-extrabold text-black">Customer Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-neutral-500">Name</p>
-                      <p className="text-base font-semibold text-black">{selectedCustomer.Customer_Name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-neutral-500">Email</p>
-                      <p className="text-base text-black">{selectedCustomer.Email}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-neutral-500">Phone</p>
-                      <p className="text-base text-black">{selectedCustomer.ContactNo}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-neutral-500">License</p>
-                      <p className="text-base text-black">{selectedCustomer.LicenseNo}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <p className="text-sm text-neutral-500">Address</p>
-                      <p className="text-base text-black">{selectedCustomer.Address}</p>
-                    </div>
-                  </div>
+                {detailError && <p className="text-red-700">{detailError}</p>}
 
-                  <div className="mt-6">
-                    <h3 className="text-base font-semibold text-black">Rentals</h3>
-                    {selectedCustomer.Rentals.length === 0 ? (
-                      <p className="mt-2 text-sm text-neutral-500">No rentals found for this customer.</p>
-                    ) : (
-                      <div className="mt-3 overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b border-neutral-200">
-                              <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Rental</th>
-                              <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Vehicle</th>
-                              <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Dates</th>
-                              <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Total</th>
-                              <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Status</th>
-                              <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedCustomer.Rentals.map((rental) => (
-                              <tr key={rental.Rental_ID} className="border-b border-neutral-100">
-                                <td className="py-4 px-4 text-sm font-semibold text-black">#{rental.Rental_ID}</td>
-                                <td className="py-4 px-4 text-sm text-neutral-700">
-                                  {rental.Vehicle
-                                    ? `${rental.Vehicle.Brand} ${rental.Vehicle.Model}`
-                                    : "Unknown"}
-                                </td>
-                                <td className="py-4 px-4 text-sm text-neutral-700">
-                                  {new Date(rental.StartDate).toLocaleDateString()} -{" "}
-                                  {new Date(rental.EndDate).toLocaleDateString()}
-                                </td>
-                                <td className="py-4 px-4 text-sm font-semibold text-black">
-                                  ƒ,ñ{rental.TotalAmount.toFixed(2)}
-                                </td>
-                                <td className="py-4 px-4 text-sm text-neutral-700">{rental.Status}</td>
-                                <td className="py-4 px-4 text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleUpdateRentalStatus(rental.Rental_ID, "Completed")}
-                                      disabled={updatingRentalId === rental.Rental_ID}
-                                      className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
-                                    >
-                                      Mark Completed
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleUpdateRentalStatus(rental.Rental_ID, "Cancelled")}
-                                      disabled={updatingRentalId === rental.Rental_ID}
-                                      className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                {selectedCustomer && !detailLoading && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                        <p className="text-sm text-neutral-500">Name</p>
+                        <p className="text-base font-semibold text-black">{selectedCustomer.Customer_Name}</p>
                       </div>
-                    )}
+                      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                        <p className="text-sm text-neutral-500">Email</p>
+                        <p className="text-base text-black">{selectedCustomer.Email}</p>
+                      </div>
+                      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                        <p className="text-sm text-neutral-500">Phone</p>
+                        <p className="text-base text-black">{selectedCustomer.ContactNo}</p>
+                      </div>
+                      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                        <p className="text-sm text-neutral-500">License</p>
+                        <p className="text-base text-black">{selectedCustomer.LicenseNo}</p>
+                      </div>
+                      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:col-span-2">
+                        <p className="text-sm text-neutral-500">Address</p>
+                        <p className="text-base text-black">{selectedCustomer.Address}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Total Paid</p>
+                        <p className="mt-2 text-2xl font-extrabold text-black">PHP {totalPaid.toFixed(2)}</p>
+                      </div>
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Total Rentals</p>
+                        <p className="mt-2 text-2xl font-extrabold text-black">{selectedCustomer.Rentals.length}</p>
+                      </div>
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Pending Payments</p>
+                        <p className="mt-2 text-2xl font-extrabold text-black">
+                          {selectedCustomer.Rentals.filter((rental) => rental.Status === "Pending Payment").length}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6">
+                      <h3 className="text-base font-semibold text-black">Rentals</h3>
+                      {selectedCustomer.Rentals.length === 0 ? (
+                        <p className="mt-2 text-sm text-neutral-500">No rentals found for this customer.</p>
+                      ) : (
+                        <div className="mt-3 overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-neutral-200">
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Rental</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Vehicle</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Dates</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Paid</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Status</th>
+                                <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedCustomer.Rentals.map((rental) => (
+                                <tr key={rental.Rental_ID} className="border-b border-neutral-100">
+                                  <td className="py-4 px-4 text-sm font-semibold text-black">#{rental.Rental_ID}</td>
+                                  <td className="py-4 px-4 text-sm text-neutral-700">
+                                    {rental.Vehicle
+                                      ? `${rental.Vehicle.Brand} ${rental.Vehicle.Model}`
+                                      : "Unknown"}
+                                  </td>
+                                  <td className="py-4 px-4 text-sm text-neutral-700">
+                                    {new Date(rental.StartDate).toLocaleDateString()} -{" "}
+                                    {new Date(rental.EndDate).toLocaleDateString()}
+                                  </td>
+                                  <td className="py-4 px-4 text-sm font-semibold text-black">
+                                    PHP {(rental.Payment?.Amount ?? 0).toFixed(2)}
+                                  </td>
+                                  <td className="py-4 px-4 text-sm text-neutral-700">{rental.Status}</td>
+                                  <td className="py-4 px-4 text-sm">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleUpdateRentalStatus(rental.Rental_ID, "Completed")}
+                                        disabled={updatingRentalId === rental.Rental_ID}
+                                        className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
+                                      >
+                                        Mark Completed
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleUpdateRentalStatus(rental.Rental_ID, "Cancelled")}
+                                        disabled={updatingRentalId === rental.Rental_ID}
+                                        className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
+                                      >
+                                        Cancel
+                                      </Button>
+                                      {rental.Status === "Pending Payment" && (
+                                        <Link href={`/payment/${rental.Rental_ID}`}>
+                                          <Button size="sm" className="rounded-xl bg-black text-white hover:bg-black/90">
+                                            Proceed to Payment
+                                          </Button>
+                                        </Link>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         </main>
       </div>

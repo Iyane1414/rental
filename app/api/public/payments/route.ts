@@ -5,48 +5,78 @@ export async function POST(request: Request) {
   try {
     const { rentalId, amount, paymentMethod, paymentDate } = await request.json()
 
-    if (!rentalId || !amount || !paymentMethod || !paymentDate) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    const rentalIdNum = Number.parseInt(rentalId)
+    if (!Number.isInteger(rentalIdNum)) {
+      return NextResponse.json({ error: "Invalid rental ID" }, { status: 400 })
     }
 
     // Verify rental exists and is pending payment
     const rental = await prisma.rentalInfo.findUnique({
-      where: { Rental_ID: rentalId },
+      where: { Rental_ID: rentalIdNum },
+      include: { PaymentInfo: true },
     })
 
     if (!rental) {
       return NextResponse.json({ error: "Rental not found" }, { status: 404 })
     }
 
-    if (rental.Status !== "Pending Payment") {
-      return NextResponse.json({ error: "Rental is not pending payment" }, { status: 400 })
+    if (["Completed", "Cancelled"].includes(rental.Status)) {
+      return NextResponse.json({ error: "Rental is not eligible for payment" }, { status: 400 })
     }
 
-    // Create payment record
-    const payment = await prisma.paymentInfo.create({
-      data: {
-        Rental_ID: rentalId,
-        Amount: parseFloat(amount.toString()),
-        PaymentDate: new Date(paymentDate),
-        PaymentMethod: paymentMethod,
-        Status: "Paid",
-      },
-    })
+    if (rental.PaymentInfo?.Status === "Paid") {
+      return NextResponse.json({
+        paymentId: rental.PaymentInfo.Payment_ID,
+        success: true,
+        message: "Payment already completed.",
+      })
+    }
 
-    // Update rental status to "Ongoing" (payment received, vehicle now in use)
-    await prisma.rentalInfo.update({
-      where: { Rental_ID: rentalId },
-      data: { Status: "Ongoing" },
-    })
+    const totalAmountNumber =
+      typeof rental.TotalAmount === "number"
+        ? rental.TotalAmount
+        : rental.TotalAmount && typeof rental.TotalAmount.toNumber === "function"
+          ? rental.TotalAmount.toNumber()
+          : Number(rental.TotalAmount) || 0
+    const rawAmount =
+      amount !== undefined && amount !== null ? Number.parseFloat(amount.toString()) : totalAmountNumber
+    const paymentAmount = Number.isFinite(rawAmount) ? rawAmount : totalAmountNumber
+    const paymentDateValue = paymentDate ? new Date(paymentDate) : new Date()
+    const paymentMethodValue = paymentMethod || "Cash"
 
-    // Update vehicle status to "Rented"
-    await prisma.vehicleInfo.update({
-      where: { Vehicle_ID: rental.Vehicle_ID },
-      data: { Status: "Rented" },
+    const payment = await prisma.$transaction(async (tx) => {
+      const updatedPayment = await tx.paymentInfo.upsert({
+        where: { Rental_ID: rentalIdNum },
+        update: {
+          Amount: paymentAmount,
+          PaymentDate: paymentDateValue,
+          PaymentMethod: paymentMethodValue,
+          Status: "Paid",
+        },
+        create: {
+          Rental_ID: rentalIdNum,
+          Amount: paymentAmount,
+          PaymentDate: paymentDateValue,
+          PaymentMethod: paymentMethodValue,
+          Status: "Paid",
+        },
+      })
+
+      await tx.rentalInfo.update({
+        where: { Rental_ID: rentalIdNum },
+        data: { Status: "Ongoing" },
+      })
+
+      await tx.vehicleInfo.update({
+        where: { Vehicle_ID: rental.Vehicle_ID },
+        data: { Status: "Rented" },
+      })
+
+      return updatedPayment
     })
 
     return NextResponse.json({ 
-      paymentId: payment.Payment_ID, 
+      paymentId: payment.Payment_ID,
       success: true,
       message: "Payment processed successfully. Rental is now active and vehicle is marked as rented."
     })

@@ -6,7 +6,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ChevronDown, Filter, MapPin, Calendar, Clock } from "lucide-react"
+import { ChevronDown, Filter, Search } from "lucide-react"
 
 interface Vehicle {
   Vehicle_ID: number
@@ -36,12 +36,11 @@ export default function BrowseVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasLoaded, setHasLoaded] = useState(false)
 
   const [sortBy, setSortBy] = useState<"popular" | "cheapest" | "best" | "newest">("popular")
-  const [location, setLocation] = useState("Mumbai")
-  const [destination, setDestination] = useState("Goa")
-  const [date, setDate] = useState("2025-01-16")
-  const [endDate, setEndDate] = useState("2025-01-23")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [fetching, setFetching] = useState(false)
 
   const [filters, setFilters] = useState({
     priceMin: 0,
@@ -54,11 +53,17 @@ export default function BrowseVehiclesPage() {
   useEffect(() => {
     fetchVehicles()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, sortBy, date, endDate])
+  }, [filters, sortBy, searchQuery])
 
   const fetchVehicles = async () => {
+    let isInitialLoad = false
     try {
-      setLoading(true)
+      isInitialLoad = !hasLoaded
+      if (isInitialLoad) {
+        setLoading(true)
+      } else {
+        setFetching(true)
+      }
 
       const params = new URLSearchParams()
       params.append("priceMin", filters.priceMin.toString())
@@ -68,29 +73,30 @@ export default function BrowseVehiclesPage() {
       if (filters.seats !== null) params.append("seats", filters.seats.toString())
       if (filters.category !== "all") params.append("category", filters.category)
       if (filters.hasAC) params.append("hasAC", "true")
-
-      if (date) {
-        params.append("startDate", date)
-      }
-      if (endDate) {
-        params.append("endDate", endDate)
-      }
+      if (searchQuery.trim()) params.append("query", searchQuery.trim())
 
       const response = await fetch(`/api/public/vehicles?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
         setVehicles(data)
         setFilteredVehicles(data)
+        setHasLoaded(true)
       } else {
         setVehicles([])
         setFilteredVehicles([])
+        setHasLoaded(true)
       }
     } catch (error) {
       console.error("Error fetching vehicles:", error)
       setVehicles([])
       setFilteredVehicles([])
     } finally {
-      setLoading(false)
+      setHasLoaded(true)
+      if (isInitialLoad) {
+        setLoading(false)
+      } else {
+        setFetching(false)
+      }
     }
   }
 
@@ -156,24 +162,9 @@ export default function BrowseVehiclesPage() {
             <Image src="/logo.png" alt="Logo" width={140} height={48} className="h-10 w-auto object-contain" priority />
           </Link>
 
-          <nav className="hidden items-center gap-8 text-sm text-white/80 md:flex">
-            <Link className="hover:text-white transition" href="/">
-              Home
-            </Link>
-            <Link className="hover:text-white transition" href="/browse-vehicles">
-              Cars
-            </Link>
-            <Link className="hover:text-white transition" href="/browse-vehicles">
-              Services
-            </Link>
-            <Link className="hover:text-white transition" href="/browse-vehicles">
-              Contact
-            </Link>
-          </nav>
-
           <div className="flex items-center gap-3">
-            <Link href="/login">
-              <Button className="bg-white text-black hover:bg-white/90">Login</Button>
+            <Link href="/">
+              <Button className="bg-white text-black hover:bg-white/90">Home</Button>
             </Link>
           </div>
         </div>
@@ -181,60 +172,18 @@ export default function BrowseVehiclesPage() {
         {/* Search bar row (clean + glass) */}
         <div className="mx-auto max-w-7xl px-4 pb-5 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-3 rounded-3xl border border-white/10 bg-black/40 p-4 backdrop-blur md:grid-cols-12 md:items-end">
-            <div className="md:col-span-3">
+            <div className="md:col-span-12">
               <label className="mb-1 block text-[11px] font-semibold text-white/70">
                 <span className="inline-flex items-center gap-2">
-                  <MapPin className="h-4 w-4" /> From
+                  <Search className="h-4 w-4" /> Car Search
                 </span>
               </label>
               <Input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by brand or model"
                 className="h-11 rounded-2xl border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-yellow-500/60"
               />
-            </div>
-
-            <div className="md:col-span-3">
-              <label className="mb-1 block text-[11px] font-semibold text-white/70">To</label>
-              <Input
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                className="h-11 rounded-2xl border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-yellow-500/60"
-              />
-            </div>
-
-            <div className="md:col-span-3">
-              <label className="mb-1 block text-[11px] font-semibold text-white/70">
-                <span className="inline-flex items-center gap-2">
-                  <Calendar className="h-4 w-4" /> Date
-                </span>
-              </label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="h-11 rounded-2xl border-white/15 bg-white/10 text-white focus-visible:ring-yellow-500/60"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="mb-1 block text-[11px] font-semibold text-white/70">
-                <span className="inline-flex items-center gap-2">
-                  <Clock className="h-4 w-4" /> End Date
-                </span>
-              </label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-11 rounded-2xl border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-yellow-500/60"
-              />
-            </div>
-
-            <div className="md:col-span-1">
-              <Button className="h-11 w-full rounded-2xl bg-yellow-500 text-black hover:bg-yellow-500/90">
-                Search
-              </Button>
             </div>
           </div>
         </div>
@@ -352,6 +301,7 @@ export default function BrowseVehiclesPage() {
                   Total <span className="font-semibold text-white">{filteredVehicles.length || 5}</span>{" "}
                   {filteredVehicles.length === 1 ? "result" : "results"}
                 </p>
+                {fetching && <p className="mt-1 text-xs text-white/50">Searching...</p>}
               </div>
 
               <div className="flex gap-2">

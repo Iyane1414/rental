@@ -210,18 +210,7 @@ export default function AdminDashboard() {
             {/* Recent Rentals */}
             <Card className="mt-8 rounded-2xl border-neutral-200">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-extrabold text-black">Recent Rentals</CardTitle>
-                  <Link href="/admin/rentals">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
-                    >
-                      View All
-                    </Button>
-                  </Link>
-                </div>
+                <CardTitle className="text-lg font-extrabold text-black">Recent Rentals</CardTitle>
               </CardHeader>
 
               <CardContent>
@@ -243,9 +232,6 @@ export default function AdminDashboard() {
                           </th>
                           <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">
                             STATUS
-                          </th>
-                          <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">
-                            ACTION
                           </th>
                         </tr>
                       </thead>
@@ -273,13 +259,6 @@ export default function AdminDashboard() {
                                 {rental.Status}
                               </Badge>
                             </td>
-                            <td className="py-4 px-4">
-                              <Link href="/admin/rentals">
-                                <Button variant="ghost" size="sm" className="rounded-xl">
-                                  View
-                                </Button>
-                              </Link>
-                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -289,21 +268,6 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
-            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Link href="/admin/rentals">
-                <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Manage Rentals</Button>
-              </Link>
-              <Link href="/admin/payments">
-                <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Process Payment</Button>
-              </Link>
-              <Link href="/admin/vehicles">
-                <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">View Vehicles</Button>
-              </Link>
-              <Link href="/admin/customers">
-                <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Customers</Button>
-              </Link>
-            </div>
           </div>
         </main>
       </div>
