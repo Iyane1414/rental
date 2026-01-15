@@ -8,9 +8,10 @@ import { usePathname, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 
-import { LayoutDashboard, Car, CreditCard, Users, ClipboardList, LogOut, RefreshCw } from "lucide-react"
+import { LayoutDashboard, Car, CreditCard, Users, ClipboardList, LogOut, RefreshCw, Search } from "lucide-react"
 
 interface Customer {
   Customer_ID: number
@@ -60,7 +61,7 @@ function AdminSidebar() {
   }
 
   return (
-    <aside className="w-[280px] shrink-0 border-r border-neutral-200 bg-white">
+    <aside className="w-[240px] shrink-0 border-r border-neutral-200 bg-white">
       <div className="flex h-full flex-col">
         <div className="px-6 pt-6">
           <Link href="/admin/dashboard" className="flex items-center gap-3">
@@ -100,19 +101,28 @@ function AdminSidebar() {
             Logout
           </Button>
 
-          <p className="mt-3 px-1 text-xs text-neutral-400">© {new Date().getFullYear()} YOLO Car Rental</p>
+          <p className="mt-3 px-1 text-xs text-neutral-400">Ac {new Date().getFullYear()} YOLO Car Rental</p>
         </div>
       </div>
     </aside>
   )
 }
 
+const statusStyles: Record<string, string> = {
+  "Pending Payment": "bg-yellow-100 text-yellow-800",
+  Ongoing: "bg-blue-100 text-blue-800",
+  Completed: "bg-green-100 text-green-800",
+  Cancelled: "bg-red-100 text-red-800",
+}
+
 export default function RentalsPage() {
   const [rentals, setRentals] = useState<Rental[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-
   const [filter, setFilter] = useState<"All" | "Pending Payment" | "Ongoing" | "Completed">("All")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedRentalId, setSelectedRentalId] = useState<number | null>(null)
+  const [statusDraft, setStatusDraft] = useState("")
 
   useEffect(() => {
     fetchRentals()
@@ -151,9 +161,23 @@ export default function RentalsPage() {
   }
 
   const filteredRentals = useMemo(() => {
-    if (filter === "All") return rentals
-    return rentals.filter((r) => r.Status === filter)
-  }, [rentals, filter])
+    const normalized = searchQuery.trim().toLowerCase()
+    return rentals.filter((rental) => {
+      if (filter !== "All" && rental.Status !== filter) return false
+      if (!normalized) return true
+      const customerName = rental.Customer?.Customer_Name?.toLowerCase() || ""
+      const customerEmail = rental.Customer?.Email?.toLowerCase() || ""
+      const vehicleName = `${rental.Vehicle?.Brand || ""} ${rental.Vehicle?.Model || ""}`.toLowerCase()
+      const plate = rental.Vehicle?.PlateNo?.toLowerCase() || ""
+      return (
+        customerName.includes(normalized) ||
+        customerEmail.includes(normalized) ||
+        vehicleName.includes(normalized) ||
+        plate.includes(normalized) ||
+        rental.Rental_ID.toString().includes(normalized)
+      )
+    })
+  }, [rentals, filter, searchQuery])
 
   const stats = useMemo(() => {
     return {
@@ -163,6 +187,19 @@ export default function RentalsPage() {
       completed: rentals.filter((r) => r.Status === "Completed").length,
     }
   }, [rentals])
+
+  const selectedRental = useMemo(
+    () => rentals.find((rental) => rental.Rental_ID === selectedRentalId) || null,
+    [rentals, selectedRentalId]
+  )
+
+  useEffect(() => {
+    if (!selectedRental) {
+      setStatusDraft("")
+      return
+    }
+    setStatusDraft(selectedRental.Status)
+  }, [selectedRental])
 
   if (loading) {
     return (
@@ -178,162 +215,207 @@ export default function RentalsPage() {
         <AdminSidebar />
 
         <main className="flex-1">
-          {/* Top bar */}
           <div className="border-b border-neutral-200 bg-white">
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-6">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
               <div>
-                <h1 className="text-2xl font-extrabold text-black">Rental Management</h1>
-                <p className="mt-1 text-sm text-neutral-600">Manage all customer rentals and their status</p>
+                <h1 className="text-lg font-extrabold text-black">Rental Management</h1>
+                <p className="mt-1 text-xs text-neutral-500">Track rentals, payments, and statuses</p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-64 max-w-full">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search rentals..."
+                    className="h-9 rounded-xl border-neutral-200 pl-9 text-sm"
+                  />
+                </div>
+                <Link href="/browse-vehicles">
+                  <Button className="h-9 rounded-xl bg-black text-white hover:bg-black/90">New Rental</Button>
+                </Link>
                 <Button
-                  onClick={fetchRentals}
                   variant="outline"
-                  className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
+                  onClick={fetchRentals}
+                  className="h-9 w-9 rounded-xl border-neutral-200 bg-white p-0 hover:bg-neutral-100"
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Refresh
+                  <RefreshCw className="h-4 w-4" />
                 </Button>
-
-                <div className="h-10 w-px bg-neutral-200" />
-                <div className="text-sm font-semibold text-neutral-700">Admin</div>
               </div>
             </div>
           </div>
 
-          <div className="mx-auto max-w-7xl px-8 py-8">
+          <div className="mx-auto max-w-7xl px-6 py-6">
             {error && (
               <Card className="mb-6 border-red-200 bg-red-50">
                 <CardContent className="pt-6 text-red-700">{error}</CardContent>
               </Card>
             )}
 
-            {/* Summary Stats (now matches dashboard style: neutral cards) */}
-            <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
-              {[
-                { title: "Total Rentals", value: stats.total },
-                { title: "Pending Payment", value: stats.pending },
-                { title: "Ongoing", value: stats.ongoing },
-                { title: "Completed", value: stats.completed },
-              ].map((s) => (
-                <Card key={s.title} className="rounded-2xl border-neutral-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-neutral-700">{s.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-extrabold text-black">{s.value}</div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-neutral-500">
+                {stats.total} rentals • {stats.pending} pending • {stats.ongoing} ongoing • {stats.completed} completed
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(["All", "Pending Payment", "Ongoing", "Completed"] as const).map((t) => (
+                  <Button
+                    key={t}
+                    onClick={() => setFilter(t)}
+                    variant={filter === t ? "default" : "outline"}
+                    className={[
+                      "h-8 rounded-xl px-3 text-xs",
+                      filter === t
+                        ? "bg-black text-white hover:bg-black/90"
+                        : "border-neutral-200 bg-white hover:bg-neutral-100",
+                    ].join(" ")}
+                  >
+                    {t === "All" ? "All Rentals" : t}
+                  </Button>
+                ))}
+              </div>
             </div>
 
-            {/* Filters (match the dashboard-ish pill buttons) */}
-            <div className="mb-6 flex flex-wrap gap-2">
-              {(["All", "Pending Payment", "Ongoing", "Completed"] as const).map((t) => (
-                <Button
-                  key={t}
-                  onClick={() => setFilter(t)}
-                  variant={filter === t ? "default" : "outline"}
-                  className={[
-                    "rounded-xl",
-                    filter === t ? "bg-black text-white hover:bg-black/90" : "border-neutral-200 bg-white hover:bg-neutral-100",
-                  ].join(" ")}
-                >
-                  {t === "All" ? "All Rentals" : t}
-                </Button>
-              ))}
-            </div>
-
-            {/* Table */}
-            <Card className="rounded-2xl border-neutral-200">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-extrabold text-black">Rentals ({filteredRentals.length})</CardTitle>
-              </CardHeader>
-
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-neutral-200">
-                        <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">ID</th>
-                        <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">CUSTOMER</th>
-                        <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">VEHICLE</th>
-                        <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">DATES</th>
-                        <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">AMOUNT</th>
-                        <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">STATUS</th>
-                        <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">ACTION</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {filteredRentals.map((rental) => (
-                        <tr key={rental.Rental_ID} className="border-b border-neutral-100 hover:bg-neutral-50">
-                          <td className="py-4 px-4 text-sm font-semibold text-black">#{rental.Rental_ID}</td>
-
-                          <td className="py-4 px-4 text-sm">
-                            <div className="font-semibold text-black">{rental.Customer?.Customer_Name}</div>
-                            <div className="mt-1 text-xs text-neutral-500">{rental.Customer?.Email}</div>
-                          </td>
-
-                          <td className="py-4 px-4 text-sm">
-                            <div className="text-neutral-900">
-                              {rental.Vehicle?.Brand} {rental.Vehicle?.Model}
-                            </div>
-                            <div className="mt-1 text-xs text-neutral-500">{rental.Vehicle?.PlateNo}</div>
-                          </td>
-
-                          <td className="py-4 px-4 text-sm text-neutral-700">
-                            <div>{new Date(rental.StartDate).toLocaleDateString()}</div>
-                            <div className="mt-1 text-xs text-neutral-500">
-                              {new Date(rental.EndDate).toLocaleDateString()}
-                            </div>
-                          </td>
-
-                          <td className="py-4 px-4 text-sm font-semibold text-black">
-                            ₱{(rental.TotalAmount || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 })}
-                          </td>
-
-                          <td className="py-4 px-4">
-                            <Badge
-                              className={
-                                rental.Status === "Pending Payment"
-                                  ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                  : rental.Status === "Ongoing"
-                                    ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                                    : rental.Status === "Completed"
-                                      ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-100"
-                              }
-                            >
-                              {rental.Status}
-                            </Badge>
-                          </td>
-
-                          <td className="py-4 px-4">
-                            <select
-                              value={rental.Status}
-                              onChange={(e) => handleStatusUpdate(rental.Rental_ID, e.target.value)}
-                              className="h-9 rounded-xl border border-neutral-200 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-neutral-200"
-                            >
-                              <option value="Pending Payment">Pending Payment</option>
-                              <option value="Ongoing">Ongoing</option>
-                              <option value="Completed">Completed</option>
-                              <option value="Cancelled">Cancelled</option>
-                            </select>
-                          </td>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <Card className="rounded-2xl border-neutral-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-extrabold text-black">Rentals</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-neutral-200 text-xs uppercase tracking-widest text-neutral-500">
+                          <th className="py-3 px-4 text-left font-semibold">Rental</th>
+                          <th className="py-3 px-4 text-left font-semibold">Vehicle</th>
+                          <th className="py-3 px-4 text-left font-semibold">Dates</th>
+                          <th className="py-3 px-4 text-left font-semibold">Amount</th>
+                          <th className="py-3 px-4 text-left font-semibold">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {filteredRentals.map((rental) => (
+                          <tr
+                            key={rental.Rental_ID}
+                            onClick={() => setSelectedRentalId(rental.Rental_ID)}
+                            className={[
+                              "border-b border-neutral-100 cursor-pointer transition-colors",
+                              selectedRentalId === rental.Rental_ID ? "bg-neutral-100" : "hover:bg-neutral-50",
+                            ].join(" ")}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-black">#{rental.Rental_ID}</div>
+                              <div className="mt-1 text-xs text-neutral-500">
+                                {rental.Customer?.Customer_Name || "Unknown"}
+                              </div>
+                              <div className="text-[11px] text-neutral-400">
+                                {rental.Customer?.Email || "No email"}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="text-neutral-900">
+                                {rental.Vehicle?.Brand} {rental.Vehicle?.Model}
+                              </div>
+                              <div className="mt-1 text-xs text-neutral-500">{rental.Vehicle?.PlateNo}</div>
+                            </td>
+                            <td className="py-3 px-4 text-xs text-neutral-600">
+                              <div>{new Date(rental.StartDate).toLocaleDateString()}</div>
+                              <div className="mt-1 text-neutral-400">{new Date(rental.EndDate).toLocaleDateString()}</div>
+                            </td>
+                            <td className="py-3 px-4 font-semibold text-black">
+                              PHP {(rental.TotalAmount || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-3 px-4">
+                              <Badge className={statusStyles[rental.Status] || "bg-neutral-100 text-neutral-700"}>
+                                {rental.Status}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
 
-                  {filteredRentals.length === 0 && (
-                    <div className="py-10 text-center text-sm text-neutral-500">No rentals found.</div>
+                    {filteredRentals.length === 0 && (
+                      <div className="py-10 text-center text-sm text-neutral-500">No rentals found.</div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl border-neutral-200">
+                <CardHeader>
+                  <CardTitle className="text-base font-extrabold text-black">Rental Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!selectedRental && (
+                    <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-6 text-sm text-neutral-500">
+                      Select a rental to view details and actions.
+                    </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
 
+                  {selectedRental && (
+                    <>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rental</p>
+                        <p className="mt-2 text-lg font-extrabold text-black">#{selectedRental.Rental_ID}</p>
+                        <p className="text-sm text-neutral-600">
+                          {new Date(selectedRental.StartDate).toLocaleDateString()} -{" "}
+                          {new Date(selectedRental.EndDate).toLocaleDateString()}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 text-sm text-neutral-700">
+                        <div>
+                          <span className="font-semibold text-black">Customer:</span>{" "}
+                          {selectedRental.Customer?.Customer_Name || "Unknown"}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-black">Email:</span>{" "}
+                          {selectedRental.Customer?.Email || "No email"}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-black">Vehicle:</span>{" "}
+                          {selectedRental.Vehicle
+                            ? `${selectedRental.Vehicle.Brand} ${selectedRental.Vehicle.Model}`
+                            : "Unknown"}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-black">Plate:</span>{" "}
+                          {selectedRental.Vehicle?.PlateNo || "N/A"}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-black">Amount:</span>{" "}
+                          PHP {(selectedRental.TotalAmount || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Status</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <select
+                            value={statusDraft}
+                            onChange={(event) => setStatusDraft(event.target.value)}
+                            className="h-9 flex-1 rounded-xl border border-neutral-200 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-neutral-200"
+                          >
+                            <option value="Pending Payment">Pending Payment</option>
+                            <option value="Ongoing">Ongoing</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                          <Button
+                            size="sm"
+                            onClick={() => handleStatusUpdate(selectedRental.Rental_ID, statusDraft)}
+                            className="h-9 rounded-xl bg-black text-white hover:bg-black/90"
+                          >
+                            Update
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </main>
       </div>

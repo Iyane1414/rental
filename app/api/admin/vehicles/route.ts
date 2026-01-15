@@ -29,6 +29,7 @@ export async function POST(request: Request) {
         Brand: data.Brand,
         Model: data.Model,
         PlateNo: data.PlateNo,
+        ImageUrl: data.ImageUrl ? data.ImageUrl.toString().trim() : null,
         Status: data.Status || "Available",
         DailyRate: Number.parseFloat(data.DailyRate),
         Year: Number.parseInt(data.Year),

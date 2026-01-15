@@ -149,6 +149,7 @@ export async function POST(request: NextRequest) {
       Category,
       HasAC,
       Location,
+      ImageUrl,
     } = body
 
     // Validation
@@ -176,6 +177,7 @@ export async function POST(request: NextRequest) {
         Brand,
         Model,
         PlateNo,
+        ImageUrl: ImageUrl ? ImageUrl.toString().trim() : null,
         DailyRate: parseFloat(DailyRate),
         Year: parseInt(Year) || new Date().getFullYear(),
         Seats: parseInt(Seats) || 4,

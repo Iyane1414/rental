@@ -176,7 +176,7 @@ export default function PaymentsPage() {
                           <tr key={payment.Payment_ID} className="border-b border-neutral-100 hover:bg-neutral-50">
                             <td className="py-4 px-4 text-sm font-semibold text-black">#{payment.Payment_ID}</td>
                             <td className="py-4 px-4 text-sm text-neutral-600">#{payment.Rental_ID}</td>
-                            <td className="py-4 px-4 text-sm font-semibold text-black">₱{payment.Amount.toFixed(2)}</td>
+                            <td className="py-4 px-4 text-sm font-semibold text-black">PHP {payment.Amount.toFixed(2)}</td>
                             <td className="py-4 px-4 text-sm text-neutral-600">{new Date(payment.PaymentDate).toLocaleDateString()}</td>
                             <td className="py-4 px-4 text-sm text-neutral-600">{payment.PaymentMethod}</td>
                             <td className="py-4 px-4">

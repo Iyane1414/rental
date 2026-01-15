@@ -108,7 +108,7 @@ export default function AdminReports() {
               <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">ƒ,ñ{reports?.totalRevenue}</div>
+              <div className="text-3xl font-bold">PHP {reports?.totalRevenue}</div>
               <p className="text-xs text-gray-500 mt-2">
                 Period: {dateFrom} to {dateTo}
               </p>
@@ -120,7 +120,7 @@ export default function AdminReports() {
               <CardTitle className="text-sm font-medium text-gray-600">Average Revenue per Rental</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">ƒ,ñ{reports?.averageRevenue}</div>
+              <div className="text-3xl font-bold">PHP {reports?.averageRevenue}</div>
               <p className="text-xs text-gray-500 mt-2">Based on completed payments</p>
             </CardContent>
           </Card>

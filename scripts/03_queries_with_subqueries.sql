@@ -1,4 +1,5 @@
--- SUBQUERY 1: Find customers with multiple rentals and their total spending
+-- SUBQUERY 1: Find customers with multiple rentals and their total spending.
+-- The subquery in WHERE filters to customers with more than one rental.
 SELECT 
     c.Customer_ID,
     c.Customer_Name,
@@ -17,7 +18,8 @@ WHERE c.Customer_ID IN (
 GROUP BY c.Customer_ID, c.Customer_Name, c.Email
 ORDER BY TotalSpent DESC;
 
--- SUBQUERY 2: Get vehicles that were rented during a specific date range
+-- SUBQUERY 2: Get vehicles that were rented during a specific date range.
+-- The nested query counts how many times each vehicle has been rented.
 SELECT 
     v.Vehicle_ID,
     v.Brand,

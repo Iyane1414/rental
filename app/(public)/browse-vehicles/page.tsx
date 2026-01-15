@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { ChevronDown, Filter, Search } from "lucide-react"
 
@@ -13,6 +14,7 @@ interface Vehicle {
   Brand: string
   Model: string
   PlateNo: string
+  ImageUrl?: string | null
   Status: string
   DailyRate: number
   Year: number
@@ -22,7 +24,9 @@ interface Vehicle {
   Location: string
 }
 
-function getBrandImage(brand: string) {
+function getVehicleImage(brand: string, imageUrl?: string | null) {
+  const trimmed = (imageUrl || "").trim()
+  if (trimmed) return trimmed
   const b = (brand || "").toLowerCase()
   if (b.includes("honda")) return "/honda.png"
   if (b.includes("toyota")) return "/toyota.png"
@@ -33,14 +37,18 @@ function getBrandImage(brand: string) {
 }
 
 export default function BrowseVehiclesPage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([])
+  const [allVehicles, setAllVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
   const [hasLoaded, setHasLoaded] = useState(false)
+  const [priceBounds, setPriceBounds] = useState({ min: 0, max: 10000 })
+  const [boundsInitialized, setBoundsInitialized] = useState(false)
 
   const [sortBy, setSortBy] = useState<"popular" | "cheapest" | "best" | "newest">("popular")
   const [searchQuery, setSearchQuery] = useState("")
   const [fetching, setFetching] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsVehicle, setDetailsVehicle] = useState<Vehicle | null>(null)
 
   const [filters, setFilters] = useState({
     priceMin: 0,
@@ -53,7 +61,12 @@ export default function BrowseVehiclesPage() {
   useEffect(() => {
     fetchVehicles()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, sortBy, searchQuery])
+  }, [filters, sortBy])
+
+  useEffect(() => {
+    fetchFilterOptions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const fetchVehicles = async () => {
     let isInitialLoad = false
@@ -73,22 +86,19 @@ export default function BrowseVehiclesPage() {
       if (filters.seats !== null) params.append("seats", filters.seats.toString())
       if (filters.category !== "all") params.append("category", filters.category)
       if (filters.hasAC) params.append("hasAC", "true")
-      if (searchQuery.trim()) params.append("query", searchQuery.trim())
 
       const response = await fetch(`/api/public/vehicles?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
-        setVehicles(data)
-        setFilteredVehicles(data)
+        const list = Array.isArray(data) ? data : []
+        setFilteredVehicles(list)
         setHasLoaded(true)
       } else {
-        setVehicles([])
         setFilteredVehicles([])
         setHasLoaded(true)
       }
     } catch (error) {
       console.error("Error fetching vehicles:", error)
-      setVehicles([])
       setFilteredVehicles([])
     } finally {
       setHasLoaded(true)
@@ -100,20 +110,98 @@ export default function BrowseVehiclesPage() {
     }
   }
 
-  // If your API returns no vehicles (ex: demo), show brand cards (Honda..Ford) as requested.
-  const fallbackBrandCards = useMemo(() => {
-    const brands = [
-      { Brand: "Honda", Model: "Featured", Category: "Sedan", DailyRate: 159, Seats: 5, HasAC: true, Year: 2024, Location: "City" },
-      { Brand: "Toyota", Model: "Featured", Category: "Sedan", DailyRate: 135, Seats: 5, HasAC: true, Year: 2024, Location: "City" },
-      { Brand: "Mitsubishi", Model: "Featured", Category: "SUV", DailyRate: 150, Seats: 7, HasAC: true, Year: 2024, Location: "City" },
-      { Brand: "Nissan", Model: "Featured", Category: "Sedan", DailyRate: 145, Seats: 5, HasAC: true, Year: 2024, Location: "City" },
-      { Brand: "Ford", Model: "Featured", Category: "SUV", DailyRate: 155, Seats: 7, HasAC: true, Year: 2024, Location: "City" },
-    ] as Array<Partial<Vehicle>>
+  const fetchFilterOptions = async () => {
+    try {
+      const response = await fetch("/api/public/vehicles")
+      if (!response.ok) {
+        setAllVehicles([])
+        return
+      }
+      const data = await response.json()
+      setAllVehicles(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error("Error fetching filter options:", error)
+      setAllVehicles([])
+    }
+  }
 
-    return brands
-  }, [])
+  useEffect(() => {
+    if (!allVehicles.length) return
+    const rates = allVehicles
+      .map((vehicle) => Number(vehicle.DailyRate))
+      .filter((value) => Number.isFinite(value))
+    if (!rates.length) return
 
-  const results = filteredVehicles.length > 0 ? filteredVehicles : fallbackBrandCards
+    const min = Math.min(...rates)
+    const max = Math.max(...rates)
+    setPriceBounds({ min, max })
+
+    if (!boundsInitialized) {
+      setFilters((prev) => ({
+        ...prev,
+        priceMin: min,
+        priceMax: max,
+      }))
+      setBoundsInitialized(true)
+    }
+  }, [allVehicles, boundsInitialized])
+
+  const seatOptions = useMemo(() => {
+    const counts = new Map<number, number>()
+    allVehicles.forEach((vehicle) => {
+      const seats = Number(vehicle.Seats)
+      if (!Number.isFinite(seats)) return
+      counts.set(seats, (counts.get(seats) || 0) + 1)
+    })
+    return Array.from(counts.entries()).sort((a, b) => a[0] - b[0])
+  }, [allVehicles])
+
+  const categoryOptions = useMemo(() => {
+    const counts = new Map<string, number>()
+    allVehicles.forEach((vehicle) => {
+      const category = (vehicle.Category || "").trim()
+      if (!category) return
+      counts.set(category, (counts.get(category) || 0) + 1)
+    })
+    return Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [allVehicles])
+
+  const showAcFilter = useMemo(() => {
+    if (!allVehicles.length) return false
+    const hasTrue = allVehicles.some((vehicle) => vehicle.HasAC)
+    const hasFalse = allVehicles.some((vehicle) => !vehicle.HasAC)
+    return hasTrue && hasFalse
+  }, [allVehicles])
+
+  const visibleVehicles = useMemo(() => {
+    const normalized = searchQuery.trim().toLowerCase()
+    if (!normalized) return filteredVehicles
+    return filteredVehicles.filter((vehicle) => {
+      const brand = vehicle.Brand?.toLowerCase() || ""
+      const model = vehicle.Model?.toLowerCase() || ""
+      const plate = vehicle.PlateNo?.toLowerCase() || ""
+      const category = vehicle.Category?.toLowerCase() || ""
+      const location = vehicle.Location?.toLowerCase() || ""
+      return (
+        brand.includes(normalized) ||
+        model.includes(normalized) ||
+        plate.includes(normalized) ||
+        category.includes(normalized) ||
+        location.includes(normalized)
+      )
+    })
+  }, [filteredVehicles, searchQuery])
+
+  const openDetails = (vehicle: Vehicle) => {
+    setDetailsVehicle(vehicle)
+    setDetailsOpen(true)
+  }
+
+  useEffect(() => {
+    if (!showAcFilter && filters.hasAC) {
+      setFilters((prev) => ({ ...prev, hasAC: false }))
+    }
+  }, [showAcFilter, filters.hasAC])
 
   if (loading) {
     return (
@@ -204,8 +292,8 @@ export default function BrowseVehiclesPage() {
                 <button
                   onClick={() =>
                     setFilters({
-                      priceMin: 0,
-                      priceMax: 10000,
+                      priceMin: priceBounds.min,
+                      priceMax: priceBounds.max,
                       seats: null,
                       category: "all",
                       hasAC: false,
@@ -222,15 +310,15 @@ export default function BrowseVehiclesPage() {
                 <p className="mb-3 text-sm font-semibold text-white/85">Price range</p>
                 <input
                   type="range"
-                  min={0}
-                  max={10000}
+                  min={priceBounds.min}
+                  max={priceBounds.max}
                   value={filters.priceMax}
                   onChange={(e) => setFilters({ ...filters, priceMax: Number(e.target.value) })}
                   className="w-full accent-yellow-500"
                 />
                 <div className="mt-2 flex justify-between text-xs text-white/70">
-                  <span>₱ {filters.priceMin}</span>
-                  <span>₱ {filters.priceMax}</span>
+                  <span>PHP {filters.priceMin}</span>
+                  <span>PHP {filters.priceMax}</span>
                 </div>
               </div>
 
@@ -249,9 +337,11 @@ export default function BrowseVehiclesPage() {
                     className="h-11 w-full appearance-none rounded-2xl border border-white/15 bg-white/10 px-3 pr-10 text-sm text-white outline-none focus:border-yellow-500/50"
                   >
                     <option value="">Any</option>
-                    <option value="4">4 Seat</option>
-                    <option value="5">5 Seat</option>
-                    <option value="7">7 Seat</option>
+                    {seatOptions.map(([seats, count]) => (
+                      <option key={seats} value={seats}>
+                        {seats} Seats ({count})
+                      </option>
+                    ))}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                 </div>
@@ -267,27 +357,30 @@ export default function BrowseVehiclesPage() {
                     className="h-11 w-full appearance-none rounded-2xl border border-white/15 bg-white/10 px-3 pr-10 text-sm text-white outline-none focus:border-yellow-500/50"
                   >
                     <option value="all">All</option>
-                    <option value="Sedan">Sedan</option>
-                    <option value="SUV">SUV</option>
-                    <option value="Van">Van</option>
+                    {categoryOptions.map(([category, count]) => (
+                      <option key={category} value={category}>
+                        {category} ({count})
+                      </option>
+                    ))}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60" />
                 </div>
               </div>
 
-              {/* Popular */}
-              <div className="mb-2">
-                <p className="mb-3 text-sm font-semibold text-white/85">Popular</p>
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-white/75">
-                  <input
-                    type="checkbox"
-                    checked={filters.hasAC}
-                    onChange={(e) => setFilters({ ...filters, hasAC: e.target.checked })}
-                    className="h-4 w-4 accent-yellow-500"
-                  />
-                  Air conditioning (AC)
-                </label>
-              </div>
+              {showAcFilter && (
+                <div className="mb-2">
+                  <p className="mb-3 text-sm font-semibold text-white/85">Popular</p>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-white/75">
+                    <input
+                      type="checkbox"
+                      checked={filters.hasAC}
+                      onChange={(e) => setFilters({ ...filters, hasAC: e.target.checked })}
+                      className="h-4 w-4 accent-yellow-500"
+                    />
+                    Air conditioning (AC)
+                  </label>
+                </div>
+              )}
             </Card>
           </aside>
 
@@ -298,8 +391,8 @@ export default function BrowseVehiclesPage() {
                 <p className="text-xs font-semibold tracking-widest text-white/60">AVAILABLE VEHICLES</p>
                 <h2 className="mt-1 text-2xl font-extrabold">Choose your ride</h2>
                 <p className="mt-1 text-sm text-white/70">
-                  Total <span className="font-semibold text-white">{filteredVehicles.length || 5}</span>{" "}
-                  {filteredVehicles.length === 1 ? "result" : "results"}
+                  Total <span className="font-semibold text-white">{visibleVehicles.length}</span>{" "}
+                  {visibleVehicles.length === 1 ? "result" : "results"}
                 </p>
                 {fetching && <p className="mt-1 text-xs text-white/50">Searching...</p>}
               </div>
@@ -328,17 +421,17 @@ export default function BrowseVehiclesPage() {
 
             {/* Grid of vehicle cards (theme-matched) */}
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {results.map((v: any, idx: number) => {
-                const id = v.Vehicle_ID ?? idx + 1
-                const brand = v.Brand ?? "Honda"
-                const model = v.Model ?? "Featured"
-                const category = v.Category ?? "Sedan"
-                const year = v.Year ?? 2024
-                const seats = v.Seats ?? 5
-                const hasAC = Boolean(v.HasAC ?? true)
-                const dailyRate = v.DailyRate ?? 149
-                const loc = v.Location ?? "City"
-                const img = getBrandImage(brand)
+              {visibleVehicles.map((vehicle) => {
+                const id = vehicle.Vehicle_ID
+                const brand = vehicle.Brand
+                const model = vehicle.Model
+                const category = vehicle.Category
+                const year = vehicle.Year
+                const seats = vehicle.Seats
+                const hasAC = Boolean(vehicle.HasAC)
+                const dailyRate = vehicle.DailyRate
+                const loc = vehicle.Location
+                const img = getVehicleImage(brand, vehicle.ImageUrl)
 
                 return (
                   <Card
@@ -351,7 +444,11 @@ export default function BrowseVehiclesPage() {
                       </div>
 
                       <div className="relative aspect-[4/3] w-full">
-                        <Image src={img} alt={`${brand} ${model}`} fill className="object-contain p-4" />
+                        <img
+                          src={img}
+                          alt={`${brand} ${model}`}
+                          className="h-full w-full object-contain p-4"
+                        />
                       </div>
 
                       <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/40 px-3 py-1 text-xs font-semibold text-white/85">
@@ -366,25 +463,24 @@ export default function BrowseVehiclesPage() {
                             {brand} <span className="text-white/80">{model}</span>
                           </h3>
                           <p className="mt-1 text-xs text-white/65">
-                            {year} • {loc} • {seats} seats {hasAC ? "• AC" : ""}
+                            {year} - {loc} - {seats} seats {hasAC ? "- AC" : ""}
                           </p>
                         </div>
 
                         <div className="text-right">
-                          <p className="text-xl font-extrabold text-white">₱{dailyRate}</p>
+                          <p className="text-xl font-extrabold text-white">PHP {dailyRate}</p>
                           <p className="text-xs text-white/60">/day</p>
                         </div>
                       </div>
 
                       <div className="mt-3 grid grid-cols-2 gap-3">
-                        <Link href={`/book-vehicle/${id}`} className="w-full">
-                          <Button
-                            variant="outline"
-                            className="h-11 w-full rounded-2xl border-white/20 bg-transparent text-white hover:bg-white/10"
-                          >
-                            View Details
-                          </Button>
-                        </Link>
+                        <Button
+                          variant="outline"
+                          onClick={() => openDetails(vehicle)}
+                          className="h-11 w-full rounded-2xl border-white/20 bg-transparent text-white hover:bg-white/10"
+                        >
+                          View Details
+                        </Button>
 
                         <Link href={`/book-vehicle/${id}`} className="w-full">
                           <Button className="h-11 w-full rounded-2xl bg-yellow-500 text-black hover:bg-yellow-500/90">
@@ -398,11 +494,95 @@ export default function BrowseVehiclesPage() {
               })}
             </div>
 
-            {filteredVehicles.length === 0 && (
+            {visibleVehicles.length === 0 && (
               <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6 text-center text-white/70 backdrop-blur-xl">
-                No vehicles match your filters right now. Showing featured brands instead.
+                No vehicles match your filters right now.
               </div>
             )}
+
+            <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+              <DialogContent className="max-w-3xl border-white/10 bg-black/90 text-white">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-extrabold text-white">Vehicle Details</DialogTitle>
+                </DialogHeader>
+
+                {detailsVehicle ? (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                      <div className="relative aspect-[4/3] w-full">
+                        <img
+                          src={getVehicleImage(detailsVehicle.Brand, detailsVehicle.ImageUrl)}
+                          alt={`${detailsVehicle.Brand} ${detailsVehicle.Model}`}
+                          className="h-full w-full object-contain p-4"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold tracking-widest text-white/60">VEHICLE</p>
+                        <h3 className="mt-2 text-2xl font-extrabold">
+                          {detailsVehicle.Brand} <span className="text-white/80">{detailsVehicle.Model}</span>
+                        </h3>
+                        <p className="mt-1 text-sm text-white/60">{detailsVehicle.PlateNo}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-sm text-white/80">
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <p className="text-[11px] uppercase tracking-widest text-white/50">Category</p>
+                          <p className="mt-1 font-semibold text-white">{detailsVehicle.Category}</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <p className="text-[11px] uppercase tracking-widest text-white/50">Seats</p>
+                          <p className="mt-1 font-semibold text-white">{detailsVehicle.Seats}</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <p className="text-[11px] uppercase tracking-widest text-white/50">Year</p>
+                          <p className="mt-1 font-semibold text-white">{detailsVehicle.Year}</p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <p className="text-[11px] uppercase tracking-widest text-white/50">Location</p>
+                          <p className="mt-1 font-semibold text-white">{detailsVehicle.Location}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-white/80">
+                        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1">
+                          {detailsVehicle.HasAC ? "With AC" : "No AC"}
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1">
+                          {detailsVehicle.Status}
+                        </span>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-xs uppercase tracking-widest text-white/50">Daily Rate</p>
+                        <p className="mt-2 text-2xl font-extrabold text-white">
+                          PHP {detailsVehicle.DailyRate}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Link href={`/book-vehicle/${detailsVehicle.Vehicle_ID}`} className="flex-1">
+                          <Button className="w-full rounded-2xl bg-yellow-500 text-black hover:bg-yellow-500/90">
+                            Book Now
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          onClick={() => setDetailsOpen(false)}
+                          className="flex-1 rounded-2xl border-white/20 bg-white text-black hover:bg-neutral-100 hover:text-black"
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/70">No vehicle selected.</p>
+                )}
+              </DialogContent>
+            </Dialog>
           </section>
         </div>
       </div>
@@ -412,7 +592,7 @@ export default function BrowseVehiclesPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <Image src="/logo.png" alt="Logo" width={110} height={36} className="h-8 w-auto object-contain" />
-            <p className="text-xs text-white/60">© {new Date().getFullYear()} YOLO Car Rental. All rights reserved.</p>
+            <p className="text-xs text-white/60">(c) {new Date().getFullYear()} YOLO Car Rental. All rights reserved.</p>
           </div>
 
           <div className="flex items-center gap-4 text-sm text-white/70">

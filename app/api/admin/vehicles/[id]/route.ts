@@ -16,6 +16,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         ...(data.Brand && { Brand: data.Brand }),
         ...(data.Model && { Model: data.Model }),
         ...(data.PlateNo && { PlateNo: data.PlateNo }),
+        ...(data.ImageUrl !== undefined && {
+          ImageUrl: data.ImageUrl ? data.ImageUrl.toString().trim() : null,
+        }),
         ...(data.Status && { Status: data.Status }),
         ...(data.DailyRate !== undefined && { DailyRate: Number.parseFloat(data.DailyRate) }),
         ...(data.Year !== undefined && { Year: Number.parseInt(data.Year) }),

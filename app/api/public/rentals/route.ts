@@ -71,11 +71,17 @@ export async function GET(request: NextRequest) {
 // POST - Create a new rental (called after booking)
 export async function POST(request: NextRequest) {
   try {
-    const { customerName, email, phone, licenseNo, vehicleId, startDate, endDate, totalAmount } = await request.json()
+    const body = await request.json()
+    const { customerName, email, phone, licenseNo, startDate, endDate, totalAmount } = body
+    const vehicleId = parseInt(body.vehicleId, 10)
 
     // Validate required fields
     if (!customerName || !email || !phone || !licenseNo || !vehicleId || !startDate || !endDate) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
+    }
+
+    if (!Number.isInteger(vehicleId) || vehicleId <= 0) {
+      return NextResponse.json({ message: "Invalid vehicleId" }, { status: 400 })
     }
 
     // Check if vehicle exists and is available
@@ -87,7 +93,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Vehicle not found" }, { status: 404 })
     }
 
-    if (vehicle.Status !== "Available") {
+    if (!["Available", "Reserved", "Rented"].includes(vehicle.Status)) {
       return NextResponse.json({ message: "Vehicle is not available" }, { status: 400 })
     }
 

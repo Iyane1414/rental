@@ -1,6 +1,7 @@
 -- Insert Sample Data for YOLO Car Rental System
+-- This file assumes the tables already exist.
 
--- Insert Users
+-- Insert Users (password is already hashed).
 INSERT INTO user_info (Username, Password, Role, Email) VALUES
 ('admin123', '$2b$10$YixZaYS6etQQXLc6cZWGCOYj4kxzlHTkJZqVV5.EGT1.WnIAqVHc2', 'Admin', 'admin@yolo.com');
 
@@ -21,7 +22,7 @@ INSERT INTO vehicle_info (Brand, Model, PlateNo, Status, DailyRate, Year) VALUES
 ('Hyundai', 'Elantra', 'ABC1238', 'Available', 1800.00, 2023),
 ('Kia', 'Picanto', 'ABC1239', 'Available', 950.00, 2021);
 
--- Insert Rentals
+-- Insert Rentals (some completed, some ongoing, some pending payment)
 INSERT INTO rental_info (Customer_ID, Vehicle_ID, User_ID, StartDate, EndDate, TotalAmount, Status) VALUES
 (1, 1, 1, '2025-11-20', '2025-11-22', 4500.00, 'Completed'),
 (2, 2, 1, '2025-11-21', '2025-11-25', 10000.00, 'Ongoing'),
@@ -29,7 +30,7 @@ INSERT INTO rental_info (Customer_ID, Vehicle_ID, User_ID, StartDate, EndDate, T
 (4, 4, 1, '2025-12-10', '2025-12-12', 3000.00, 'Completed'),
 (5, 5, 1, '2025-12-15', '2025-12-20', 9000.00, 'Pending Payment');
 
--- Insert Payments
+-- Insert Payments (only for rentals that are completed/paid)
 INSERT INTO payment_info (Rental_ID, Amount, PaymentDate, PaymentMethod, Status) VALUES
 (1, 4500.00, '2025-11-20', 'GCash', 'Paid'),
 (2, 10000.00, '2025-11-21', 'Credit Card', 'Paid'),

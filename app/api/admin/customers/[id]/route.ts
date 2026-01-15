@@ -54,6 +54,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
               Model: rental.Vehicle.Model,
               PlateNo: rental.Vehicle.PlateNo,
               Status: rental.Vehicle.Status,
+              ImageUrl: rental.Vehicle.ImageUrl,
             }
           : null,
         Payment: rental.PaymentInfo

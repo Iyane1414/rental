@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
@@ -8,9 +8,10 @@ import { usePathname, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 
-import { LayoutDashboard, Car, CreditCard, Users, ClipboardList, LogOut, RefreshCw } from "lucide-react"
+import { LayoutDashboard, Car, CreditCard, Users, ClipboardList, LogOut, RefreshCw, Search } from "lucide-react"
 
 interface DashboardStats {
   pendingPayments: number
@@ -56,25 +57,26 @@ function AdminSidebar() {
   }
 
   return (
-    <aside className="w-[280px] shrink-0 border-r border-neutral-200 bg-white">
-      <div className="flex h-full flex-col p-6">
-        {/* Logo */}
-        <Link href="/admin/dashboard" className="flex items-center gap-3">
-          <Image src="/logo.png" alt="Logo" width={140} height={48} className="h-10 w-auto object-contain" />
-        </Link>
+    <aside className="w-[240px] shrink-0 border-r border-neutral-200 bg-white">
+      <div className="flex h-full flex-col">
+        <div className="px-6 pt-6">
+          <Link href="/admin/dashboard" className="flex items-center gap-3">
+            <Image src="/logo.png" alt="Logo" width={140} height={48} className="h-10 w-auto object-contain" />
+          </Link>
 
-        <div className="mt-6 text-xs font-semibold tracking-widest text-neutral-500">ADMIN PORTAL</div>
+          <div className="mt-6 text-xs font-semibold tracking-widest text-neutral-500">ADMIN PORTAL</div>
+        </div>
 
         {/* Nav */}
-        <nav className="mt-4 space-y-2">
+        <nav className="mt-4 space-y-2 px-3">
           {nav.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
             return (
-              <Link key={item.href} href={item.href}>
+              <Link key={item.href} href={item.href} className="block">
                 <div
                   className={[
-                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition",
                     active
                       ? "bg-black text-white"
                       : "text-neutral-700 hover:bg-neutral-100 hover:text-black",
@@ -89,7 +91,7 @@ function AdminSidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="mt-auto pt-6">
+        <div className="mt-auto px-3 pb-6 pt-6">
           <Button
             onClick={handleLogout}
             variant="outline"
@@ -99,7 +101,7 @@ function AdminSidebar() {
             Logout
           </Button>
 
-          <p className="mt-3 text-xs text-neutral-400">© {new Date().getFullYear()} YOLO Car Rental</p>
+          <p className="mt-3 px-1 text-xs text-neutral-400">Ac {new Date().getFullYear()} YOLO Car Rental</p>
         </div>
       </div>
     </aside>
@@ -111,6 +113,7 @@ export default function AdminDashboard() {
   const [recentRentals, setRecentRentals] = useState<RecentRental[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
 
   useEffect(() => {
     fetchDashboardData()
@@ -138,6 +141,20 @@ export default function AdminDashboard() {
     }
   }
 
+  const filteredRecentRentals = useMemo(() => {
+    const normalized = searchQuery.trim().toLowerCase()
+    if (!normalized) return recentRentals
+    return recentRentals.filter((rental) => {
+      const customerName = rental.Customer?.Customer_Name?.toLowerCase() || ""
+      const vehicleName = `${rental.Vehicle?.Brand || ""} ${rental.Vehicle?.Model || ""}`.toLowerCase()
+      return (
+        customerName.includes(normalized) ||
+        vehicleName.includes(normalized) ||
+        rental.Rental_ID.toString().includes(normalized)
+      )
+    })
+  }, [recentRentals, searchQuery])
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
@@ -153,31 +170,38 @@ export default function AdminDashboard() {
 
         {/* Main */}
         <main className="flex-1">
-          {/* Top bar */}
           <div className="border-b border-neutral-200 bg-white">
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-6">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-4">
               <div>
-                <h1 className="text-2xl font-extrabold text-black">Admin Dashboard</h1>
-                <p className="mt-1 text-sm text-neutral-600">Monitor operations and manage rentals</p>
+                <h1 className="text-lg font-extrabold text-black">Admin Dashboard</h1>
+                <p className="mt-1 text-xs text-neutral-500">Monitor operations and manage rentals</p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-64 max-w-full">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search recent rentals..."
+                    className="h-9 rounded-xl border-neutral-200 pl-9 text-sm"
+                  />
+                </div>
+                <Link href="/admin/reports">
+                  <Button className="h-9 rounded-xl bg-black text-white hover:bg-black/90">Export Report</Button>
+                </Link>
                 <Button
                   onClick={fetchDashboardData}
                   variant="outline"
-                  className="rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
+                  className="h-9 w-9 rounded-xl border-neutral-200 bg-white p-0 hover:bg-neutral-100"
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Refresh
+                  <RefreshCw className="h-4 w-4" />
                 </Button>
-
-                <div className="h-10 w-px bg-neutral-200" />
-                <div className="text-sm font-semibold text-neutral-700">Admin</div>
               </div>
             </div>
           </div>
 
-          <div className="mx-auto max-w-7xl px-8 py-8">
+          <div className="mx-auto max-w-7xl px-6 py-6">
             {error && (
               <Card className="mb-6 border-red-200 bg-red-50">
                 <CardContent className="pt-6 text-red-700">{error}</CardContent>
@@ -214,7 +238,7 @@ export default function AdminDashboard() {
               </CardHeader>
 
               <CardContent>
-                {recentRentals.length === 0 ? (
+                {filteredRecentRentals.length === 0 ? (
                   <p className="text-neutral-500">No rentals found</p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -236,7 +260,7 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {recentRentals.map((rental) => (
+                        {filteredRecentRentals.map((rental) => (
                           <tr key={rental.Rental_ID} className="border-b border-neutral-100 hover:bg-neutral-50">
                             <td className="py-4 px-4 text-sm font-semibold text-black">
                               {rental.Customer?.Customer_Name || "Unknown"}

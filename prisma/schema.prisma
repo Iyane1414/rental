@@ -27,6 +27,7 @@ model VehicleInfo {
   Brand       String  @db.VarChar(50)
   Model       String  @db.VarChar(50)
   PlateNo     String  @db.VarChar(20) @unique
+  ImageUrl    String? @db.VarChar(255)
   Status      String  @db.VarChar(20) @default("Available")
   DailyRate   Decimal @db.Decimal(10, 2)
   Year        Int
