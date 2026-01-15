@@ -272,7 +272,7 @@ export default function CustomersPage() {
             </Card>
 
             <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-              <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto rounded-3xl border-neutral-200 bg-white shadow-xl">
+              <DialogContent className="w-[94vw] max-w-6xl max-h-[85vh] overflow-y-auto rounded-3xl border-neutral-200 bg-white shadow-xl">
                 <DialogHeader>
                   <DialogTitle className="text-lg font-extrabold text-black">Customer Details</DialogTitle>
                 </DialogHeader>
