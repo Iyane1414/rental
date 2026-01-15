@@ -31,7 +31,9 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: any = {
-      Status: "Available",
+      Status: {
+        in: ["Available", "Reserved", "Rented"],
+      },
       DailyRate: {
         gte: priceMin,
         lte: priceMax,

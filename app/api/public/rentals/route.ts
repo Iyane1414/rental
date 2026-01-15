@@ -141,17 +141,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Create rental - Status = "Pending Payment"
-    // Assign to default staff (User_ID = 2) for now
+    // Assign to default admin user (User_ID = 1) for now
     const rental = await prisma.rentalInfo.create({
       data: {
         Customer_ID: customer.Customer_ID,
         Vehicle_ID: vehicleId,
-        User_ID: 2, // Default staff member
+        User_ID: 1, // Default admin user
         StartDate: new Date(startDate),
         EndDate: new Date(endDate),
         TotalAmount: parseFloat(totalAmount.toString()),
         Status: "Pending Payment",
       },
+    })
+
+    await prisma.vehicleInfo.update({
+      where: { Vehicle_ID: vehicleId },
+      data: { Status: "Reserved" },
     })
 
     return NextResponse.json({ rentalId: rental.Rental_ID, success: true })

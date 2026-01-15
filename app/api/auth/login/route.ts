@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
+    if (user.Role !== "Admin") {
+      return NextResponse.json({ error: "Admin access only" }, { status: 403 })
+    }
+
     return NextResponse.json({
       token: "dummy-token",
       user: {

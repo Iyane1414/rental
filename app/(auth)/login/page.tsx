@@ -38,7 +38,7 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token)
       localStorage.setItem("user", JSON.stringify(data.user))
 
-      router.push(data.user.Role === "Admin" ? "/admin/dashboard" : "/staff/dashboard")
+      router.push("/admin/dashboard")
     } catch {
       setError("An error occurred. Please try again.")
     } finally {
@@ -166,9 +166,6 @@ export default function LoginPage() {
               <p className="mb-2 font-semibold text-yellow-300">Demo Credentials</p>
               <p>
                 Admin: <span className="font-semibold text-white">admin123</span> / password
-              </p>
-              <p>
-                Staff: <span className="font-semibold text-white">staff001</span> / password
               </p>
             </div>
 

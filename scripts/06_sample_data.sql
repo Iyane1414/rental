@@ -2,9 +2,7 @@
 
 -- Insert Users
 INSERT INTO user_info (Username, Password, Role, Email) VALUES
-('admin123', '$2b$10$YixZaYS6etQQXLc6cZWGCOYj4kxzlHTkJZqVV5.EGT1.WnIAqVHc2', 'Admin', 'admin@yolo.com'),
-('staff001', '$2b$10$YixZaYS6etQQXLc6cZWGCOYj4kxzlHTkJZqVV5.EGT1.WnIAqVHc2', 'Staff', 'staff1@yolo.com'),
-('staff002', '$2b$10$YixZaYS6etQQXLc6cZWGCOYj4kxzlHTkJZqVV5.EGT1.WnIAqVHc2', 'Staff', 'staff2@yolo.com');
+('admin123', '$2b$10$YixZaYS6etQQXLc6cZWGCOYj4kxzlHTkJZqVV5.EGT1.WnIAqVHc2', 'Admin', 'admin@yolo.com');
 
 -- Insert Customers
 INSERT INTO customer_info (Customer_Name, ContactNo, LicenseNo, Email, Address) VALUES
@@ -26,9 +24,9 @@ INSERT INTO vehicle_info (Brand, Model, PlateNo, Status, DailyRate, Year) VALUES
 -- Insert Rentals
 INSERT INTO rental_info (Customer_ID, Vehicle_ID, User_ID, StartDate, EndDate, TotalAmount, Status) VALUES
 (1, 1, 1, '2025-11-20', '2025-11-22', 4500.00, 'Completed'),
-(2, 2, 2, '2025-11-21', '2025-11-25', 10000.00, 'Ongoing'),
+(2, 2, 1, '2025-11-21', '2025-11-25', 10000.00, 'Ongoing'),
 (3, 3, 1, '2025-12-01', '2025-12-05', 6000.00, 'Pending Payment'),
-(4, 4, 2, '2025-12-10', '2025-12-12', 3000.00, 'Completed'),
+(4, 4, 1, '2025-12-10', '2025-12-12', 3000.00, 'Completed'),
 (5, 5, 1, '2025-12-15', '2025-12-20', 9000.00, 'Pending Payment');
 
 -- Insert Payments

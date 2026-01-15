@@ -20,7 +20,7 @@ export async function GET() {
 
     // Vehicles in maintenance
     const vehiclesInMaintenance = await prisma.vehicleInfo.count({
-      where: { Status: "Under Maintenance" },
+      where: { Status: "Maintenance" },
     })
 
     // Total revenue (sum of PaymentInfo.Amount)
@@ -31,11 +31,6 @@ export async function GET() {
     const totalRevenue = revenueData._sum?.Amount
       ? Number(revenueData._sum.Amount)
       : 0
-
-    // Staff count (Role = "Staff")
-    const staffCount = await prisma.userInfo.count({
-      where: { Role: "Staff" },
-    })
 
     // Completed rentals today (using EndDate as the "completion date")
     const today = new Date()
@@ -62,7 +57,6 @@ export async function GET() {
       totalRevenue,
       completedToday,
       vehiclesInMaintenance,
-      staffCount,
     })
   } catch (error) {
     console.error("Error fetching stats:", error)

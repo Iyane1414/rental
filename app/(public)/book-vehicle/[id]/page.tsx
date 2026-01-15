@@ -28,6 +28,7 @@ type Vehicle = {
 
 type ErrorType = null | "not_found" | "server_error"
 type ErrorState = { type: ErrorType; message: string }
+type BlockedRange = { StartDate: string; EndDate: string; Status: string }
 
 function formatCurrency(value: unknown): string {
   if (value === null || value === undefined) return "0.00"
@@ -56,6 +57,7 @@ export default function BookVehiclePage() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [blockedRanges, setBlockedRanges] = useState<BlockedRange[]>([])
 
   // ✅ IMPORTANT: explicit type so TS never becomes "never"
   const [error, setError] = useState<ErrorState>({ type: null, message: "" })
@@ -141,6 +143,23 @@ export default function BookVehiclePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicleId])
 
+  async function fetchAvailability() {
+    try {
+      if (!vehicleId) return
+      const res = await fetch(`/api/public/vehicles/${vehicleId}/availability`)
+      if (!res.ok) return
+      const data = (await res.json()) as BlockedRange[]
+      setBlockedRanges(data || [])
+    } catch (e) {
+      console.error("Error fetching availability:", e)
+    }
+  }
+
+  useEffect(() => {
+    fetchAvailability()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleId])
+
   function validateForm(): boolean {
     const errors: Record<string, string> = {}
 
@@ -163,6 +182,19 @@ export default function BookVehiclePage() {
       const end = new Date(formData.endDate)
       if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end <= start) {
         errors.endDate = "End date must be after start date"
+      }
+    }
+
+    if (formData.startDate && formData.endDate && blockedRanges.length > 0) {
+      const start = new Date(formData.startDate)
+      const end = new Date(formData.endDate)
+      const hasOverlap = blockedRanges.some((range) => {
+        const rangeStart = new Date(range.StartDate)
+        const rangeEnd = new Date(range.EndDate)
+        return start <= rangeEnd && end >= rangeStart
+      })
+      if (hasOverlap) {
+        errors.endDate = "Selected dates overlap an existing booking"
       }
     }
 
@@ -515,6 +547,20 @@ export default function BookVehiclePage() {
                           {formErrors.endDate && <p className="mt-1 text-sm text-red-200">{formErrors.endDate}</p>}
                         </div>
                       </div>
+
+                      {blockedRanges.length > 0 && (
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
+                          <p className="mb-2 text-xs font-semibold text-white/70">Unavailable Dates</p>
+                          <ul className="space-y-1">
+                            {blockedRanges.map((range, idx) => (
+                              <li key={`${range.StartDate}-${range.EndDate}-${idx}`}>
+                                {new Date(range.StartDate).toLocaleDateString()} -{" "}
+                                {new Date(range.EndDate).toLocaleDateString()} ({range.Status})
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
                       <div>
                         <label className="mb-2 block text-sm font-semibold text-white/80">Pick-up Location *</label>

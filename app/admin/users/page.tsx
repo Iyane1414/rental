@@ -24,7 +24,6 @@ export default function AdminUsers() {
   const [formData, setFormData] = useState({
     Username: "",
     Password: "",
-    Role: "Staff",
     Email: "",
   })
 
@@ -57,7 +56,7 @@ export default function AdminUsers() {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, Role: "Admin" }),
       })
 
       if (!res.ok) {
@@ -65,11 +64,10 @@ export default function AdminUsers() {
         throw new Error(data.error || "Failed to create user")
       }
 
-      setSuccess("Staff user created successfully!")
+      setSuccess("Admin user created successfully!")
       setFormData({
         Username: "",
         Password: "",
-        Role: "Staff",
         Email: "",
       })
       fetchUsers()
@@ -94,8 +92,8 @@ export default function AdminUsers() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Users & Staff Management</h1>
-            <p className="text-gray-600 mt-2">Create and manage admin and staff accounts</p>
+            <h1 className="text-3xl font-bold text-gray-900">Admin Users</h1>
+            <p className="text-gray-600 mt-2">Create and manage admin accounts</p>
           </div>
           <Dialog>
             <DialogTrigger asChild>
@@ -106,18 +104,6 @@ export default function AdminUsers() {
                 <DialogTitle>Create New User</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Role</label>
-                  <select
-                    value={formData.Role}
-                    onChange={(e) => setFormData({ ...formData, Role: e.target.value })}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg"
-                  >
-                    <option>Admin</option>
-                    <option>Staff</option>
-                  </select>
-                </div>
-
                 <input
                   placeholder="Username"
                   value={formData.Username}
@@ -207,17 +193,6 @@ export default function AdminUsers() {
           </CardContent>
         </Card>
 
-        {/* Staff Performance Summary */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Staff Performance Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 text-sm">
-              This section will show staff metrics like rentals handled, payments collected, and vehicle status updates.
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

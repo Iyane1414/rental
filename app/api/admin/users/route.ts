@@ -24,9 +24,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { Username, Password, Role, Email } = await request.json()
+    const { Username, Password, Email } = await request.json()
 
-    if (!Username || !Password || !Email || !Role) {
+    if (!Username || !Password || !Email) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
     }
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         Username,
         Password: hashedPassword,
         Email,
-        Role,
+        Role: "Admin",
       },
     })
 

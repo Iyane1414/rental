@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
@@ -17,6 +17,23 @@ interface Payment {
   PaymentDate: string
   PaymentMethod: string
   Status: string
+  Rental?: {
+    Rental_ID: number
+    Status: string
+    TotalAmount: number
+    Customer?: {
+      Customer_ID: number
+      Customer_Name: string
+      Email: string
+    } | null
+    Vehicle?: {
+      Vehicle_ID: number
+      Brand: string
+      Model: string
+      PlateNo: string
+      Status: string
+    } | null
+  } | null
 }
 
 function AdminSidebar() {
@@ -92,6 +109,9 @@ function AdminSidebar() {
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
+  const [updatingId, setUpdatingId] = useState<number | null>(null)
+  const [error, setError] = useState("")
+  const [statusDraft, setStatusDraft] = useState<Record<number, string>>({})
 
   useEffect(() => {
     fetchPayments()
@@ -99,15 +119,51 @@ export default function PaymentsPage() {
 
   const fetchPayments = async () => {
     try {
+      setError("")
       const response = await fetch("/api/admin/payments")
       if (response.ok) {
         const data = await response.json()
         setPayments(data)
+        setStatusDraft((prev) => {
+          const next = { ...prev }
+          data.forEach((payment: Payment) => {
+            if (!next[payment.Payment_ID]) next[payment.Payment_ID] = payment.Status
+          })
+          return next
+        })
+      } else {
+        throw new Error("Failed to fetch payments")
       }
     } catch (error) {
       console.error("Error fetching payments:", error)
+      setError(error instanceof Error ? error.message : "Failed to fetch payments")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUpdatePayment = async (paymentId: number) => {
+    try {
+      const nextStatus = statusDraft[paymentId]
+      if (!nextStatus) return
+
+      setUpdatingId(paymentId)
+      const response = await fetch(`/api/admin/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Status: nextStatus }),
+      })
+
+      if (!response.ok) {
+        const message = await response.text()
+        throw new Error(message || "Failed to update payment")
+      }
+
+      await fetchPayments()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update payment")
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -150,6 +206,12 @@ export default function PaymentsPage() {
           </div>
 
           <div className="mx-auto max-w-7xl px-8 py-8">
+            {error && (
+              <Card className="mb-6 border-red-200 bg-red-50">
+                <CardContent className="pt-6 text-red-700">{error}</CardContent>
+              </Card>
+            )}
+
             <Card className="rounded-2xl border-neutral-200">
               <CardHeader>
                 <CardTitle className="text-lg font-extrabold text-black">Payments ({payments.length})</CardTitle>
@@ -169,6 +231,7 @@ export default function PaymentsPage() {
                           <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Date</th>
                           <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Method</th>
                           <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Status</th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-widest text-neutral-500">Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -182,13 +245,42 @@ export default function PaymentsPage() {
                             <td className="py-4 px-4">
                               <Badge
                                 className={
-                                  payment.Status === "Completed"
+                                  payment.Status === "Paid"
                                     ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                                    : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                    : payment.Status === "Failed" || payment.Status === "Refunded"
+                                      ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                      : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
                                 }
                               >
                                 {payment.Status}
                               </Badge>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={statusDraft[payment.Payment_ID] || payment.Status}
+                                  onChange={(e) =>
+                                    setStatusDraft((prev) => ({
+                                      ...prev,
+                                      [payment.Payment_ID]: e.target.value,
+                                    }))
+                                  }
+                                  className="h-9 rounded-xl border border-neutral-200 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-neutral-200"
+                                >
+                                  <option value="Pending">Pending</option>
+                                  <option value="Paid">Paid</option>
+                                  <option value="Failed">Failed</option>
+                                  <option value="Refunded">Refunded</option>
+                                </select>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleUpdatePayment(payment.Payment_ID)}
+                                  disabled={updatingId === payment.Payment_ID}
+                                  className="h-9 rounded-xl bg-black text-white hover:bg-black/90"
+                                >
+                                  {updatingId === payment.Payment_ID ? "Saving" : "Update"}
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))}

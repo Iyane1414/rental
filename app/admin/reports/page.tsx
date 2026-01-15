@@ -21,11 +21,6 @@ interface ReportData {
     Customer_Name: string
     rentalCount: number
   }>
-  staffPerformance: Array<{
-    Username: string
-    rentalCount: number
-    revenueHandled: string
-  }>
 }
 
 export default function AdminReports() {
@@ -113,8 +108,10 @@ export default function AdminReports() {
               <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">₱{reports?.totalRevenue}</div>
-              <p className="text-xs text-gray-500 mt-2">Period: {dateFrom} to {dateTo}</p>
+              <div className="text-3xl font-bold">ƒ,ñ{reports?.totalRevenue}</div>
+              <p className="text-xs text-gray-500 mt-2">
+                Period: {dateFrom} to {dateTo}
+              </p>
             </CardContent>
           </Card>
 
@@ -123,7 +120,7 @@ export default function AdminReports() {
               <CardTitle className="text-sm font-medium text-gray-600">Average Revenue per Rental</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">₱{reports?.averageRevenue}</div>
+              <div className="text-3xl font-bold">ƒ,ñ{reports?.averageRevenue}</div>
               <p className="text-xs text-gray-500 mt-2">Based on completed payments</p>
             </CardContent>
           </Card>
@@ -218,41 +215,6 @@ export default function AdminReports() {
               </div>
             ) : (
               <p className="text-gray-500">No data available</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Staff Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Staff Performance (Accountability)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {reports?.staffPerformance && reports.staffPerformance.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 text-sm font-medium">Staff Member</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Rentals Processed</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium">Revenue Handled</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reports.staffPerformance.map((staff, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4 text-sm font-medium">{staff.Username}</td>
-                        <td className="py-3 px-4 text-sm">{staff.rentalCount}</td>
-                        <td className="py-3 px-4 text-sm font-medium">
-                          ₱{parseFloat(staff.revenueHandled).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500">No staff data available</p>
             )}
           </CardContent>
         </Card>

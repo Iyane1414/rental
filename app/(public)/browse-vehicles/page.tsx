@@ -41,7 +41,7 @@ export default function BrowseVehiclesPage() {
   const [location, setLocation] = useState("Mumbai")
   const [destination, setDestination] = useState("Goa")
   const [date, setDate] = useState("2025-01-16")
-  const [time, setTime] = useState("03:00 AM")
+  const [endDate, setEndDate] = useState("2025-01-23")
 
   const [filters, setFilters] = useState({
     priceMin: 0,
@@ -54,7 +54,7 @@ export default function BrowseVehiclesPage() {
   useEffect(() => {
     fetchVehicles()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, sortBy, date])
+  }, [filters, sortBy, date, endDate])
 
   const fetchVehicles = async () => {
     try {
@@ -71,9 +71,9 @@ export default function BrowseVehiclesPage() {
 
       if (date) {
         params.append("startDate", date)
-        const endDate = new Date(date)
-        endDate.setDate(endDate.getDate() + 7)
-        params.append("endDate", endDate.toISOString().split("T")[0])
+      }
+      if (endDate) {
+        params.append("endDate", endDate)
       }
 
       const response = await fetch(`/api/public/vehicles?${params.toString()}`)
@@ -220,12 +220,13 @@ export default function BrowseVehiclesPage() {
             <div className="md:col-span-2">
               <label className="mb-1 block text-[11px] font-semibold text-white/70">
                 <span className="inline-flex items-center gap-2">
-                  <Clock className="h-4 w-4" /> Time
+                  <Clock className="h-4 w-4" /> End Date
                 </span>
               </label>
               <Input
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
                 className="h-11 rounded-2xl border-white/15 bg-white/10 text-white placeholder:text-white/40 focus-visible:ring-yellow-500/60"
               />
             </div>

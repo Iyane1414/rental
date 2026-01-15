@@ -24,21 +24,41 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   try {
     const { id } = await context.params
     const data = await request.json()
-    
-    // Update rental with provided fields
+
+    const rentalId = Number.parseInt(id)
+    if (!Number.isInteger(rentalId)) {
+      return NextResponse.json({ message: "Invalid rental ID" }, { status: 400 })
+    }
+
+    const statusValue = data.Status ?? data.status
+    const nextStatus = typeof statusValue === "string" ? statusValue : undefined
+
     const rental = await prisma.rentalInfo.update({
-      where: { Rental_ID: Number.parseInt(id) },
+      where: { Rental_ID: rentalId },
       data: {
-        ...(data.status && { status: data.status }),
+        ...(nextStatus && { Status: nextStatus }),
         ...(data.User_ID && { User_ID: data.User_ID }),
-        ...(data.return_date && { return_date: new Date(data.return_date) }),
       },
       include: {
         Customer: true,
         Vehicle: true,
       },
     })
-    
+
+    if (nextStatus && rental.Vehicle_ID) {
+      let nextVehicleStatus: string | null = null
+      if (nextStatus === "Ongoing") nextVehicleStatus = "Rented"
+      if (nextStatus === "Completed" || nextStatus === "Cancelled") nextVehicleStatus = "Available"
+      if (nextStatus === "Pending Payment") nextVehicleStatus = "Reserved"
+
+      if (nextVehicleStatus) {
+        await prisma.vehicleInfo.update({
+          where: { Vehicle_ID: rental.Vehicle_ID },
+          data: { Status: nextVehicleStatus },
+        })
+      }
+    }
+
     return NextResponse.json(rental)
   } catch (error) {
     console.error("Error updating rental:", error)

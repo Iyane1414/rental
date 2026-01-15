@@ -14,31 +14,35 @@ import { LayoutDashboard, Car, CreditCard, Users, ClipboardList, LogOut, Refresh
 
 interface DashboardStats {
   pendingPayments: number
-  ongoingRentals: number
+  activeRentals: number
   availableVehicles: number
-  rentalsEndingToday: number
+  completedToday: number
 }
 
 interface RecentRental {
   Rental_ID: number
-  Customer_Name: string
-  Vehicle_Brand: string
-  Vehicle_Model: string
   Status: string
   StartDate: string
   EndDate: string
+  Customer: {
+    Customer_Name: string
+  }
+  Vehicle: {
+    Brand: string
+    Model: string
+  }
 }
 
-function StaffSidebar() {
+function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
 
   const nav = [
-    { label: "Dashboard", href: "/staff/dashboard", icon: LayoutDashboard },
-    { label: "Rentals", href: "/staff/rentals", icon: ClipboardList },
-    { label: "Payments", href: "/staff/payments", icon: CreditCard },
-    { label: "Vehicles", href: "/staff/vehicles", icon: Car },
-    { label: "Customers", href: "/staff/customers", icon: Users },
+    { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Rentals", href: "/admin/rentals", icon: ClipboardList },
+    { label: "Payments", href: "/admin/payments", icon: CreditCard },
+    { label: "Vehicles", href: "/admin/vehicles", icon: Car },
+    { label: "Customers", href: "/admin/customers", icon: Users },
   ]
 
   const isActive = (href: string) => pathname?.startsWith(href)
@@ -55,11 +59,11 @@ function StaffSidebar() {
     <aside className="w-[280px] shrink-0 border-r border-neutral-200 bg-white">
       <div className="flex h-full flex-col p-6">
         {/* Logo */}
-        <Link href="/staff/dashboard" className="flex items-center gap-3">
+        <Link href="/admin/dashboard" className="flex items-center gap-3">
           <Image src="/logo.png" alt="Logo" width={140} height={48} className="h-10 w-auto object-contain" />
         </Link>
 
-        <div className="mt-6 text-xs font-semibold tracking-widest text-neutral-500">STAFF PORTAL</div>
+        <div className="mt-6 text-xs font-semibold tracking-widest text-neutral-500">ADMIN PORTAL</div>
 
         {/* Nav */}
         <nav className="mt-4 space-y-2">
@@ -102,7 +106,7 @@ function StaffSidebar() {
   )
 }
 
-export default function StaffDashboard() {
+export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentRentals, setRecentRentals] = useState<RecentRental[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,15 +122,15 @@ export default function StaffDashboard() {
       setLoading(true)
       setError("")
 
-      const statsRes = await fetch("/api/staff/dashboard/stats")
+      const statsRes = await fetch("/api/admin/stats")
       if (!statsRes.ok) throw new Error("Failed to fetch stats")
       const statsData = await statsRes.json()
       setStats(statsData)
 
-      const rentalsRes = await fetch("/api/staff/rentals?limit=5")
+      const rentalsRes = await fetch("/api/admin/rentals")
       if (!rentalsRes.ok) throw new Error("Failed to fetch rentals")
       const rentalsData = await rentalsRes.json()
-      setRecentRentals(rentalsData)
+      setRecentRentals((rentalsData || []).slice(0, 5))
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
@@ -145,7 +149,7 @@ export default function StaffDashboard() {
   return (
     <div className="min-h-screen bg-white">
       <div className="flex min-h-screen">
-        <StaffSidebar />
+        <AdminSidebar />
 
         {/* Main */}
         <main className="flex-1">
@@ -153,8 +157,8 @@ export default function StaffDashboard() {
           <div className="border-b border-neutral-200 bg-white">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-6">
               <div>
-                <h1 className="text-2xl font-extrabold text-black">Staff Dashboard</h1>
-                <p className="mt-1 text-sm text-neutral-600">Manage rentals, payments, and vehicles</p>
+                <h1 className="text-2xl font-extrabold text-black">Admin Dashboard</h1>
+                <p className="mt-1 text-sm text-neutral-600">Monitor operations and manage rentals</p>
               </div>
 
               <div className="flex items-center gap-3">
@@ -168,7 +172,7 @@ export default function StaffDashboard() {
                 </Button>
 
                 <div className="h-10 w-px bg-neutral-200" />
-                <div className="text-sm font-semibold text-neutral-700">Staff</div>
+                <div className="text-sm font-semibold text-neutral-700">Admin</div>
               </div>
             </div>
           </div>
@@ -184,9 +188,9 @@ export default function StaffDashboard() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               {[
                 { title: "Pending Payments", value: stats?.pendingPayments ?? 0, sub: "Require action" },
-                { title: "Ongoing Rentals", value: stats?.ongoingRentals ?? 0, sub: "In progress" },
+                { title: "Active Rentals", value: stats?.activeRentals ?? 0, sub: "In progress" },
                 { title: "Available Vehicles", value: stats?.availableVehicles ?? 0, sub: "Ready to rent" },
-                { title: "Ending Today", value: stats?.rentalsEndingToday ?? 0, sub: "Return expected" },
+                { title: "Completed Today", value: stats?.completedToday ?? 0, sub: "Finished rentals" },
               ].map((item) => (
                 <Card key={item.title} className="rounded-2xl border-neutral-200">
                   <CardHeader className="pb-2">
@@ -208,7 +212,7 @@ export default function StaffDashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-extrabold text-black">Recent Rentals</CardTitle>
-                  <Link href="/staff/rentals">
+                  <Link href="/admin/rentals">
                     <Button
                       variant="outline"
                       size="sm"
@@ -248,9 +252,11 @@ export default function StaffDashboard() {
                       <tbody>
                         {recentRentals.map((rental) => (
                           <tr key={rental.Rental_ID} className="border-b border-neutral-100 hover:bg-neutral-50">
-                            <td className="py-4 px-4 text-sm font-semibold text-black">{rental.Customer_Name}</td>
+                            <td className="py-4 px-4 text-sm font-semibold text-black">
+                              {rental.Customer?.Customer_Name || "Unknown"}
+                            </td>
                             <td className="py-4 px-4 text-sm text-neutral-800">
-                              {rental.Vehicle_Brand} {rental.Vehicle_Model}
+                              {rental.Vehicle?.Brand || "Unknown"} {rental.Vehicle?.Model || ""}
                             </td>
                             <td className="py-4 px-4 text-sm text-neutral-600">
                               {new Date(rental.StartDate).toLocaleDateString()} –{" "}
@@ -268,7 +274,7 @@ export default function StaffDashboard() {
                               </Badge>
                             </td>
                             <td className="py-4 px-4">
-                              <Link href={`/staff/rentals/${rental.Rental_ID}`}>
+                              <Link href="/admin/rentals">
                                 <Button variant="ghost" size="sm" className="rounded-xl">
                                   View
                                 </Button>
@@ -285,16 +291,16 @@ export default function StaffDashboard() {
 
             {/* Quick Actions */}
             <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Link href="/staff/rentals">
+              <Link href="/admin/rentals">
                 <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Manage Rentals</Button>
               </Link>
-              <Link href="/staff/payments">
+              <Link href="/admin/payments">
                 <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Process Payment</Button>
               </Link>
-              <Link href="/staff/vehicles">
+              <Link href="/admin/vehicles">
                 <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">View Vehicles</Button>
               </Link>
-              <Link href="/staff/customers">
+              <Link href="/admin/customers">
                 <Button className="w-full rounded-xl bg-black text-white hover:bg-black/90">Customers</Button>
               </Link>
             </div>

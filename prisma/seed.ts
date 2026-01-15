@@ -21,20 +21,6 @@ async function main() {
 
   console.log("Admin user created:", admin)
 
-  // Create Staff user
-  const staff = await prisma.userInfo.upsert({
-    where: { Username: "staff001" },
-    update: {},
-    create: {
-      Username: "staff001",
-      Password: hashedPassword,
-      Role: "Staff",
-      Email: "staff@yolorental.com",
-    },
-  })
-
-  console.log("Staff user created:", staff)
-
   // Create sample vehicles with new fields
   const vehicles = [
     {

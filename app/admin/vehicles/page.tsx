@@ -20,6 +20,10 @@ interface Vehicle {
   Status: string
   DailyRate: number
   Year: number
+  Seats: number
+  Category: string
+  HasAC: boolean
+  Location: string
 }
 
 function AdminSidebar() {
@@ -96,6 +100,8 @@ export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingVehicleId, setEditingVehicleId] = useState<number | null>(null)
+  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "rented" | "unavailable">("all")
   const [formData, setFormData] = useState({
     Brand: "",
     Model: "",
@@ -103,6 +109,10 @@ export default function VehiclesPage() {
     Status: "Available",
     DailyRate: "",
     Year: "",
+    Seats: "",
+    Category: "Sedan",
+    HasAC: true,
+    Location: "",
   })
 
   useEffect(() => {
@@ -123,19 +133,37 @@ export default function VehiclesPage() {
     }
   }
 
-  const handleAddVehicle = async (e: React.FormEvent) => {
+  const filteredVehicles = useMemo(() => {
+    if (statusFilter === "all") return vehicles
+    if (statusFilter === "available") {
+      return vehicles.filter((vehicle) => vehicle.Status === "Available")
+    }
+    if (statusFilter === "rented") {
+      return vehicles.filter((vehicle) => vehicle.Status === "Rented")
+    }
+    return vehicles.filter((vehicle) =>
+      ["Maintenance", "Decommissioned", "Reserved"].includes(vehicle.Status)
+    )
+  }, [vehicles, statusFilter])
+
+  const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault()
 
     try {
-      const response = await fetch("/api/admin/vehicles", {
-        method: "POST",
+      const isEditing = editingVehicleId !== null
+      const endpoint = isEditing ? `/api/admin/vehicles/${editingVehicleId}` : "/api/admin/vehicles"
+      const method = isEditing ? "PATCH" : "POST"
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       })
 
       if (response.ok) {
-        fetchVehicles()
+        await fetchVehicles()
         setShowForm(false)
+        setEditingVehicleId(null)
         setFormData({
           Brand: "",
           Model: "",
@@ -143,11 +171,49 @@ export default function VehiclesPage() {
           Status: "Available",
           DailyRate: "",
           Year: "",
+          Seats: "",
+          Category: "Sedan",
+          HasAC: true,
+          Location: "",
         })
       }
     } catch (error) {
-      console.error("Error adding vehicle:", error)
+      console.error("Error saving vehicle:", error)
     }
+  }
+
+  const handleStartAdd = () => {
+    setEditingVehicleId(null)
+    setShowForm(true)
+    setFormData({
+      Brand: "",
+      Model: "",
+      PlateNo: "",
+      Status: "Available",
+      DailyRate: "",
+      Year: "",
+      Seats: "",
+      Category: "Sedan",
+      HasAC: true,
+      Location: "",
+    })
+  }
+
+  const handleStartEdit = (vehicle: Vehicle) => {
+    setEditingVehicleId(vehicle.Vehicle_ID)
+    setShowForm(true)
+    setFormData({
+      Brand: vehicle.Brand ?? "",
+      Model: vehicle.Model ?? "",
+      PlateNo: vehicle.PlateNo ?? "",
+      Status: vehicle.Status ?? "Available",
+      DailyRate: vehicle.DailyRate?.toString() ?? "",
+      Year: vehicle.Year?.toString() ?? "",
+      Seats: vehicle.Seats?.toString() ?? "",
+      Category: vehicle.Category ?? "Sedan",
+      HasAC: Boolean(vehicle.HasAC),
+      Location: vehicle.Location ?? "",
+    })
   }
 
   if (loading) {
@@ -174,7 +240,14 @@ export default function VehiclesPage() {
 
               <div className="flex items-center gap-3">
                 <Button
-                  onClick={() => setShowForm(!showForm)}
+                  onClick={() => {
+                    if (showForm) {
+                      setShowForm(false)
+                      setEditingVehicleId(null)
+                    } else {
+                      handleStartAdd()
+                    }
+                  }}
                   className="rounded-xl bg-black text-white hover:bg-black/90"
                 >
                   {showForm ? "Cancel" : "Add Vehicle"}
@@ -187,14 +260,39 @@ export default function VehiclesPage() {
           </div>
 
           <div className="mx-auto max-w-7xl px-8 py-8">
+            <div className="mb-6 flex flex-wrap gap-2">
+              {[
+                { key: "all", label: "All" },
+                { key: "available", label: "Available" },
+                { key: "rented", label: "Ongoing/Rented" },
+                { key: "unavailable", label: "Unavailable/Maintenance" },
+              ].map((item) => (
+                <Button
+                  key={item.key}
+                  onClick={() => setStatusFilter(item.key as typeof statusFilter)}
+                  variant={statusFilter === item.key ? "default" : "outline"}
+                  className={[
+                    "rounded-xl",
+                    statusFilter === item.key
+                      ? "bg-black text-white hover:bg-black/90"
+                      : "border-neutral-200 bg-white hover:bg-neutral-100",
+                  ].join(" ")}
+                >
+                  {item.label}
+                </Button>
+              ))}
+            </div>
+
             {showForm && (
               <Card className="mb-8 rounded-2xl border-neutral-200">
                 <CardHeader>
-                  <CardTitle className="text-lg font-extrabold text-black">Add New Vehicle</CardTitle>
+                  <CardTitle className="text-lg font-extrabold text-black">
+                    {editingVehicleId ? "Edit Vehicle" : "Add New Vehicle"}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleAddVehicle} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  <form onSubmit={handleSaveVehicle} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <Input
                         placeholder="Brand"
                         value={formData.Brand}
@@ -217,6 +315,13 @@ export default function VehiclesPage() {
                         required
                       />
                       <Input
+                        placeholder="Location"
+                        value={formData.Location}
+                        onChange={(e) => setFormData({ ...formData, Location: e.target.value })}
+                        className="rounded-xl border-neutral-200"
+                        required
+                      />
+                      <Input
                         placeholder="Year"
                         type="number"
                         value={formData.Year}
@@ -233,6 +338,24 @@ export default function VehiclesPage() {
                         className="rounded-xl border-neutral-200"
                         required
                       />
+                      <Input
+                        placeholder="Seats"
+                        type="number"
+                        value={formData.Seats}
+                        onChange={(e) => setFormData({ ...formData, Seats: e.target.value })}
+                        className="rounded-xl border-neutral-200"
+                        required
+                      />
+                      <select
+                        value={formData.Category}
+                        onChange={(e) => setFormData({ ...formData, Category: e.target.value })}
+                        className="rounded-xl border border-neutral-200 bg-white px-3 py-2"
+                      >
+                        <option>Sedan</option>
+                        <option>SUV</option>
+                        <option>Van</option>
+                        <option>Truck</option>
+                      </select>
                       <select
                         value={formData.Status}
                         onChange={(e) => setFormData({ ...formData, Status: e.target.value })}
@@ -244,9 +367,17 @@ export default function VehiclesPage() {
                         <option>Reserved</option>
                         <option>Decommissioned</option>
                       </select>
+                      <select
+                        value={formData.HasAC ? "true" : "false"}
+                        onChange={(e) => setFormData({ ...formData, HasAC: e.target.value === "true" })}
+                        className="rounded-xl border border-neutral-200 bg-white px-3 py-2"
+                      >
+                        <option value="true">With AC</option>
+                        <option value="false">No AC</option>
+                      </select>
                     </div>
                     <Button type="submit" className="rounded-xl bg-black text-white hover:bg-black/90">
-                      Add Vehicle
+                      {editingVehicleId ? "Save Changes" : "Add Vehicle"}
                     </Button>
                   </form>
                 </CardContent>
@@ -255,11 +386,11 @@ export default function VehiclesPage() {
 
             <Card className="rounded-2xl border-neutral-200">
               <CardHeader>
-                <CardTitle className="text-lg font-extrabold text-black">Vehicles ({vehicles.length})</CardTitle>
+                <CardTitle className="text-lg font-extrabold text-black">Vehicles ({filteredVehicles.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {vehicles.map((vehicle) => (
+                  {filteredVehicles.map((vehicle) => (
                     <div
                       key={vehicle.Vehicle_ID}
                       className="border border-neutral-200 rounded-xl p-6 hover:shadow-lg transition-shadow bg-white"
@@ -275,11 +406,32 @@ export default function VehiclesPage() {
                           <span className="font-semibold text-black">Year:</span> {vehicle.Year}
                         </p>
                         <p className="text-neutral-600">
+                          <span className="font-semibold text-black">Category:</span> {vehicle.Category}
+                        </p>
+                        <p className="text-neutral-600">
+                          <span className="font-semibold text-black">Seats:</span> {vehicle.Seats}
+                        </p>
+                        <p className="text-neutral-600">
+                          <span className="font-semibold text-black">Location:</span> {vehicle.Location}
+                        </p>
+                        <p className="text-neutral-600">
+                          <span className="font-semibold text-black">AC:</span> {vehicle.HasAC ? "Yes" : "No"}
+                        </p>
+                        <p className="text-neutral-600">
                           <span className="font-semibold text-black">Daily Rate:</span> ₱{vehicle.DailyRate.toFixed(2)}
                         </p>
                         <p className="text-neutral-600">
                           <span className="font-semibold text-black">Status:</span> {vehicle.Status}
                         </p>
+                      </div>
+                      <div className="mt-4">
+                        <Button
+                          onClick={() => handleStartEdit(vehicle)}
+                          variant="outline"
+                          className="w-full rounded-xl border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100"
+                        >
+                          Edit Vehicle
+                        </Button>
                       </div>
                     </div>
                   ))}

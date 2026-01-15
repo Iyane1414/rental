@@ -104,42 +104,6 @@ export async function GET(request: NextRequest) {
         rentalCount: c.count,
       }))
 
-    // Staff Performance - count rentals by staff
-    const staffMap = new Map<number | null, { username: string; rentals: number; revenue: number }>()
-    
-    for (const rental of allRentals) {
-      const staffId = rental.User_ID
-      if (staffId !== null && staffId !== undefined) {
-        if (!staffMap.has(staffId)) {
-          const staff = await prisma.userInfo.findUnique({
-            where: { User_ID: staffId },
-          })
-          staffMap.set(staffId, {
-            username: staff?.Username || "Unknown",
-            rentals: 0,
-            revenue: 0,
-          })
-        }
-        const entry = staffMap.get(staffId)
-        if (entry) {
-          entry.rentals++
-          // Add revenue from payment if exists
-          const payment = rental.PaymentInfo
-          if (payment) {
-            entry.revenue += Number(payment.Amount)
-          }
-        }
-      }
-    }
-
-    const staffPerformance = Array.from(staffMap.values())
-      .sort((a, b) => b.rentals - a.rentals)
-      .map((s) => ({
-        Username: s.username,
-        rentalCount: s.rentals,
-        revenueHandled: s.revenue.toFixed(2),
-      }))
-
     return NextResponse.json({
       totalRevenue: totalRevenue.toFixed(2),
       averageRevenue: averageRevenue,
@@ -150,7 +114,6 @@ export async function GET(request: NextRequest) {
       pendingPaymentRentals,
       topVehicles,
       topCustomers,
-      staffPerformance,
     })
   } catch (error) {
     console.error("Error generating reports:", error)

@@ -13,36 +13,31 @@ import { Spinner } from "@/components/ui/spinner"
 import { LayoutDashboard, Car, CreditCard, Users, ClipboardList, LogOut, RefreshCw } from "lucide-react"
 
 interface Customer {
-  customer_id: number
-  customer_name: string
-  email: string
+  Customer_ID: number
+  Customer_Name: string
+  Email: string
 }
 
 interface Vehicle {
-  vehicle_id: number
-  brand: string
-  model: string
-  plate: string
+  Vehicle_ID: number
+  Brand: string
+  Model: string
+  PlateNo: string
+  Status: string
 }
 
 interface Rental {
-  rental_id: number
-  Customer: Customer
-  Vehicle: Vehicle
-  rental_start_date: string
-  rental_end_date: string
-  return_date: string | null
-  status: string
-  total_amount: number
+  Rental_ID: number
+  Customer: Customer | null
+  Vehicle: Vehicle | null
+  StartDate: string
+  EndDate: string
+  Status: string
+  TotalAmount: number
   User_ID: number | null
 }
 
-interface Staff {
-  user_id: number
-  username: string
-}
-
-function StaffSidebar() {
+function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -114,17 +109,13 @@ function StaffSidebar() {
 
 export default function RentalsPage() {
   const [rentals, setRentals] = useState<Rental[]>([])
-  const [staff, setStaff] = useState<Staff[]>([])
   const [loading, setLoading] = useState(true)
-  const [assigningRental, setAssigningRental] = useState<number | null>(null)
-  const [selectedStaff, setSelectedStaff] = useState<{ [key: number]: number }>({})
   const [error, setError] = useState("")
 
   const [filter, setFilter] = useState<"All" | "Pending Payment" | "Ongoing" | "Completed">("All")
 
   useEffect(() => {
     fetchRentals()
-    fetchStaff()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -143,25 +134,12 @@ export default function RentalsPage() {
     }
   }
 
-  const fetchStaff = async () => {
-    try {
-      const response = await fetch("/api/admin/users")
-      if (response.ok) {
-        const data = await response.json()
-        const staffUsers = data.filter((u: any) => u.Role === "Staff")
-        setStaff(staffUsers.map((u: any) => ({ user_id: u.User_ID, username: u.Username })))
-      }
-    } catch {
-      // ignore
-    }
-  }
-
   const handleStatusUpdate = async (rentalId: number, newStatus: string) => {
     try {
       const response = await fetch(`/api/admin/rentals/${rentalId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ Status: newStatus }),
       })
 
       if (!response.ok) throw new Error("Failed to update rental status")
@@ -172,43 +150,17 @@ export default function RentalsPage() {
     }
   }
 
-  const handleAssignStaff = async (rentalId: number, staffId: number) => {
-    try {
-      setAssigningRental(rentalId)
-      const response = await fetch(`/api/admin/rentals/${rentalId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ User_ID: staffId }),
-      })
-
-      if (!response.ok) throw new Error("Failed to assign staff")
-
-      await fetchRentals()
-      setSelectedStaff((prev) => {
-        const next = { ...prev }
-        delete next[rentalId]
-        return next
-      })
-      setError("")
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error assigning staff member")
-    } finally {
-      setAssigningRental(null)
-    }
-  }
-
   const filteredRentals = useMemo(() => {
     if (filter === "All") return rentals
-    return rentals.filter((r) => r.status === filter)
+    return rentals.filter((r) => r.Status === filter)
   }, [rentals, filter])
 
   const stats = useMemo(() => {
     return {
       total: rentals.length,
-      pending: rentals.filter((r) => r.status === "Pending Payment").length,
-      ongoing: rentals.filter((r) => r.status === "Ongoing").length,
-      completed: rentals.filter((r) => r.status === "Completed").length,
-      unassigned: rentals.filter((r) => !r.User_ID).length,
+      pending: rentals.filter((r) => r.Status === "Pending Payment").length,
+      ongoing: rentals.filter((r) => r.Status === "Ongoing").length,
+      completed: rentals.filter((r) => r.Status === "Completed").length,
     }
   }, [rentals])
 
@@ -223,7 +175,7 @@ export default function RentalsPage() {
   return (
     <div className="min-h-screen bg-white">
       <div className="flex min-h-screen">
-        <StaffSidebar />
+        <AdminSidebar />
 
         <main className="flex-1">
           {/* Top bar */}
@@ -245,7 +197,7 @@ export default function RentalsPage() {
                 </Button>
 
                 <div className="h-10 w-px bg-neutral-200" />
-                <div className="text-sm font-semibold text-neutral-700">Staff</div>
+                <div className="text-sm font-semibold text-neutral-700">Admin</div>
               </div>
             </div>
           </div>
@@ -290,7 +242,6 @@ export default function RentalsPage() {
                         <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">VEHICLE</th>
                         <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">DATES</th>
                         <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">AMOUNT</th>
-                        <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">ASSIGNED</th>
                         <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">STATUS</th>
                         <th className="py-3 px-4 text-left text-xs font-bold tracking-widest text-neutral-500">ACTION</th>
                       </tr>
@@ -298,99 +249,52 @@ export default function RentalsPage() {
 
                     <tbody>
                       {filteredRentals.map((rental) => (
-                        <tr key={rental.rental_id} className="border-b border-neutral-100 hover:bg-neutral-50">
-                          <td className="py-4 px-4 text-sm font-semibold text-black">#{rental.rental_id}</td>
+                        <tr key={rental.Rental_ID} className="border-b border-neutral-100 hover:bg-neutral-50">
+                          <td className="py-4 px-4 text-sm font-semibold text-black">#{rental.Rental_ID}</td>
 
                           <td className="py-4 px-4 text-sm">
-                            <div className="font-semibold text-black">{rental.Customer.customer_name}</div>
-                            <div className="mt-1 text-xs text-neutral-500">{rental.Customer.email}</div>
+                            <div className="font-semibold text-black">{rental.Customer?.Customer_Name}</div>
+                            <div className="mt-1 text-xs text-neutral-500">{rental.Customer?.Email}</div>
                           </td>
 
                           <td className="py-4 px-4 text-sm">
                             <div className="text-neutral-900">
-                              {rental.Vehicle.brand} {rental.Vehicle.model}
+                              {rental.Vehicle?.Brand} {rental.Vehicle?.Model}
                             </div>
-                            <div className="mt-1 text-xs text-neutral-500">{rental.Vehicle.plate}</div>
+                            <div className="mt-1 text-xs text-neutral-500">{rental.Vehicle?.PlateNo}</div>
                           </td>
 
                           <td className="py-4 px-4 text-sm text-neutral-700">
-                            <div>{new Date(rental.rental_start_date).toLocaleDateString()}</div>
+                            <div>{new Date(rental.StartDate).toLocaleDateString()}</div>
                             <div className="mt-1 text-xs text-neutral-500">
-                              {new Date(rental.rental_end_date).toLocaleDateString()}
+                              {new Date(rental.EndDate).toLocaleDateString()}
                             </div>
                           </td>
 
                           <td className="py-4 px-4 text-sm font-semibold text-black">
-                            ₱{(rental.total_amount || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 })}
-                          </td>
-
-                          <td className="py-4 px-4 text-sm">
-                            {selectedStaff[rental.rental_id] ? (
-                              <div className="flex items-center gap-2">
-                                <select
-                                  value={selectedStaff[rental.rental_id]}
-                                  onChange={(e) =>
-                                    setSelectedStaff((prev) => ({
-                                      ...prev,
-                                      [rental.rental_id]: Number(e.target.value),
-                                    }))
-                                  }
-                                  className="h-9 rounded-xl border border-neutral-200 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-neutral-200"
-                                >
-                                  <option value={0}>Select Staff...</option>
-                                  {staff.map((s) => (
-                                    <option key={s.user_id} value={s.user_id}>
-                                      {s.username}
-                                    </option>
-                                  ))}
-                                </select>
-
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleAssignStaff(rental.rental_id, selectedStaff[rental.rental_id])}
-                                  disabled={assigningRental === rental.rental_id || !selectedStaff[rental.rental_id]}
-                                  className="h-9 rounded-xl bg-black text-white hover:bg-black/90"
-                                >
-                                  {assigningRental === rental.rental_id ? "..." : "Assign"}
-                                </Button>
-                              </div>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  setSelectedStaff((prev) => ({
-                                    ...prev,
-                                    [rental.rental_id]: staff[0]?.user_id || 0,
-                                  }))
-                                }
-                                className="h-9 rounded-xl border-neutral-200 bg-white hover:bg-neutral-100"
-                              >
-                                {rental.User_ID ? `ID: ${rental.User_ID}` : "Assign Staff"}
-                              </Button>
-                            )}
+                            ₱{(rental.TotalAmount || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 })}
                           </td>
 
                           <td className="py-4 px-4">
                             <Badge
                               className={
-                                rental.status === "Pending Payment"
+                                rental.Status === "Pending Payment"
                                   ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                  : rental.status === "Ongoing"
+                                  : rental.Status === "Ongoing"
                                     ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                                    : rental.status === "Completed"
+                                    : rental.Status === "Completed"
                                       ? "bg-green-100 text-green-800 hover:bg-green-100"
                                       : "bg-neutral-100 text-neutral-700 hover:bg-neutral-100"
                               }
                             >
-                              {rental.status}
+                              {rental.Status}
                             </Badge>
                           </td>
 
                           <td className="py-4 px-4">
                             <select
-                              value={rental.status}
-                              onChange={(e) => handleStatusUpdate(rental.rental_id, e.target.value)}
+                              value={rental.Status}
+                              onChange={(e) => handleStatusUpdate(rental.Rental_ID, e.target.value)}
                               className="h-9 rounded-xl border border-neutral-200 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-neutral-200"
                             >
                               <option value="Pending Payment">Pending Payment</option>
@@ -412,13 +316,12 @@ export default function RentalsPage() {
             </Card>
 
             {/* Summary Stats (now matches dashboard style: neutral cards) */}
-            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-5">
+            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-4">
               {[
                 { title: "Total Rentals", value: stats.total },
                 { title: "Pending Payment", value: stats.pending },
                 { title: "Ongoing", value: stats.ongoing },
                 { title: "Completed", value: stats.completed },
-                { title: "Unassigned", value: stats.unassigned },
               ].map((s) => (
                 <Card key={s.title} className="rounded-2xl border-neutral-200">
                   <CardHeader className="pb-2">
