@@ -161,7 +161,7 @@ export default function HomePage() {
                     width={1400}
                     height={1000}
                     priority
-                    className="h-auto w-[280px] max-w-[92vw] object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.55)]"
+                    className="h-auto w-[250px] max-w-[92vw] object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.55)]"
                   />
                 </div>
               </div>
