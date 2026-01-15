@@ -21,7 +21,7 @@ async function main() {
 
   console.log("Admin user created:", admin)
 
-  // Create sample vehicles with new fields
+  // Create sample vehicles
   const vehicles = [
     {
       Brand: "Toyota",
@@ -29,10 +29,6 @@ async function main() {
       PlateNo: "TY-2022-001",
       DailyRate: 1500,
       Year: 2022,
-      Seats: 4,
-      Category: "Sedan",
-      HasAC: true,
-      Location: "Mumbai",
       Status: "Available",
     },
     {
@@ -41,10 +37,6 @@ async function main() {
       PlateNo: "HD-2021-002",
       DailyRate: 1800,
       Year: 2021,
-      Seats: 4,
-      Category: "Sedan",
-      HasAC: true,
-      Location: "Mumbai",
       Status: "Available",
     },
     {
@@ -53,10 +45,6 @@ async function main() {
       PlateNo: "TY-2023-003",
       DailyRate: 2500,
       Year: 2023,
-      Seats: 7,
-      Category: "SUV",
-      HasAC: true,
-      Location: "Mumbai",
       Status: "Available",
     },
     {
@@ -65,10 +53,6 @@ async function main() {
       PlateNo: "MS-2020-004",
       DailyRate: 1200,
       Year: 2020,
-      Seats: 4,
-      Category: "Sedan",
-      HasAC: true,
-      Location: "Mumbai",
       Status: "Available",
     },
     {
@@ -77,10 +61,6 @@ async function main() {
       PlateNo: "HY-2022-005",
       DailyRate: 2000,
       Year: 2022,
-      Seats: 5,
-      Category: "SUV",
-      HasAC: true,
-      Location: "Mumbai",
       Status: "Available",
     },
     {
@@ -89,10 +69,6 @@ async function main() {
       PlateNo: "MR-2021-006",
       DailyRate: 1000,
       Year: 2021,
-      Seats: 5,
-      Category: "Sedan",
-      HasAC: true,
-      Location: "Mumbai",
       Status: "Available",
     },
     {
@@ -101,10 +77,6 @@ async function main() {
       PlateNo: "MH-2023-007",
       DailyRate: 3000,
       Year: 2023,
-      Seats: 7,
-      Category: "SUV",
-      HasAC: true,
-      Location: "Mumbai",
       Status: "Available",
     },
   ]
@@ -113,7 +85,7 @@ async function main() {
     await prisma.vehicleInfo.upsert({
       where: { PlateNo: vehicle.PlateNo },
       update: {},
-      create: vehicle as any,
+      create: vehicle,
     })
   }
 
