@@ -47,11 +47,11 @@ function StaffSidebar() {
   const router = useRouter()
 
   const nav = [
-    { label: "Dashboard", href: "/staff/dashboard", icon: LayoutDashboard },
-    { label: "Rentals", href: "/staff/rentals", icon: ClipboardList },
-    { label: "Payments", href: "/staff/payments", icon: CreditCard },
-    { label: "Vehicles", href: "/staff/vehicles", icon: Car },
-    { label: "Customers", href: "/staff/customers", icon: Users },
+    { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+    { label: "Rentals", href: "/admin/rentals", icon: ClipboardList },
+    { label: "Payments", href: "/admin/payments", icon: CreditCard },
+    { label: "Vehicles", href: "/admin/vehicles", icon: Car },
+    { label: "Customers", href: "/admin/customers", icon: Users },
   ]
 
   const isActive = (href: string) => pathname?.startsWith(href)
@@ -68,11 +68,11 @@ function StaffSidebar() {
     <aside className="w-[280px] shrink-0 border-r border-neutral-200 bg-white">
       <div className="flex h-full flex-col">
         <div className="px-6 pt-6">
-          <Link href="/staff/dashboard" className="flex items-center gap-3">
+          <Link href="/admin/dashboard" className="flex items-center gap-3">
             <Image src="/logo.png" alt="Logo" width={140} height={48} className="h-10 w-auto object-contain" />
           </Link>
 
-          <div className="mt-6 text-xs font-semibold tracking-widest text-neutral-500">STAFF PORTAL</div>
+          <div className="mt-6 text-xs font-semibold tracking-widest text-neutral-500">ADMIN PORTAL</div>
         </div>
 
         <nav className="mt-4 space-y-2 px-3">
